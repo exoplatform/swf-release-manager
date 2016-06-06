@@ -1,0 +1,7 @@
+= eXo Release Manager
+
+This repository contains all files about the eXo Release Manager:
+
+* +app+: Scripts (bash) used in the *exoplatform/exo-release* Docker image, to release one project
+* +doc+: eXo Release Manager Documentation
+* +orchestrator+: Groovy Scripts used by Jenkins to release/clean several projects with Docker Containers

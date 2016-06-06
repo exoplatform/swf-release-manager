@@ -1,0 +1,14 @@
+{
+  "id": "",
+  "step": {
+    "name": "",
+    "status": ""
+  },
+  "jira": {
+    "issue_id": ""
+  },
+  "nexus": {
+    "staged_repository_id": "",
+    "staged_repository_url": ""
+  }
+}

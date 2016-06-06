@@ -1,0 +1,36 @@
+[user]
+	name = @@GITHUB_FULLNAME@@
+	email = @@GITHUB_EMAIL@@
+
+[github]
+	user = @@GITHUB_LOGIN@@
+
+[core]
+  editor = "/usr/bin/vim.tiny"
+
+[push]
+	default = simple
+
+[color]
+        branch = auto
+        diff = auto
+        status = auto
+        interactive = auto
+[alias]
+        st = status
+        stp = status --porcelain
+        ci = commit
+        br = branch
+        co = checkout
+        rz = reset --hard HEAD
+        pullr = pull --rebase
+        unstage = reset HEAD
+        #lol = log --graph --decorate --pretty=oneline --abbrev-commit
+        #lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
+        lol = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+        lola = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --all
+        lpush = "!git --no-pager log origin/$(git currentbranch)..HEAD --oneline"
+        lpull = "!git --no-pager log HEAD..origin/$(git currentbranch) --oneline"
+        whatsnew = "!git diff origin/$(git currentbranch)...HEAD"
+        whatscoming = "!git diff HEAD...origin/$(git currentbranch)"
+        currentbranch = "!git branch | grep \"^\\*\" | cut -d \" \" -f 2"

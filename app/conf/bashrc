@@ -1,0 +1,24 @@
+# .bashrc
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+# Git
+source ~/.git-completion.bash
+
+# User specific aliases and functions
+# PROMPT
+PS1="\[\e[36;40m\]\u@\h\[\e[00m\]:\[\e[33;40m\]\w\[\e[00m\]\\$ "
+
+# COLORS
+export CLICOLOR=1
+
+# EDITOR
+export EDITOR=vim
+
+# Add scripts to the PATH
+export EXO_SCRIPTS=@@SCRIPTS_DIR@@
+
+export PATH=$EXO_SCRIPTS:@@TOOLS_DIR@@:.:$PATH
