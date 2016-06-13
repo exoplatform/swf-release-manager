@@ -8,6 +8,7 @@ function git_release_create_branch {
 
 function git_release_delete_branch {
     log "Delete release branch release/$2"
+    gitCommand $1 checkout -
     gitCommand $1 branch -D "release/$2"
 }
 
