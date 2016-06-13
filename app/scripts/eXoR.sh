@@ -8,6 +8,7 @@ source ${SCRIPTS_DIR}/utils/trycatch.sh
 source ${SCRIPTS_DIR}/process/release-catalog.sh
 source ${SCRIPTS_DIR}/process/release-status.sh
 source ${SCRIPTS_DIR}/process/git-clone.sh
+source ${SCRIPTS_DIR}/process/git-release.sh
 source ${SCRIPTS_DIR}/process/nexus-repos.sh
 source ${SCRIPTS_DIR}/process/maven-release.sh
 source ${SCRIPTS_DIR}/process/maven-dependencies.sh
@@ -136,7 +137,7 @@ function exor_release_project {
       jira_add_comment $projectName "release_prepare_OK" $issueId
 
       # skip tests for release:perform as release:prepare just run them
-      maven_perform_release $projectName true || throw $exProjectBuild
+      maven_perform_release $projectName true $releaseVersion || throw $exProjectBuild
       # Notification to JIRA issue
       jira_add_comment $projectName "release_perform_OK" $issueId
 

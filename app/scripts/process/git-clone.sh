@@ -1,23 +1,5 @@
 #!/bin/bash -eu
 
-# TODO
-function usage {
- echo "Usage:"
- echo ""
- echo "* Clone one single project:"
- echo "   $0 project"
- echo "      project : The project (github name) where action must be done."
-  echo ""
- echo "* Clone all projects with label:"
- echo "    $0 -l label"
- echo "      label : The label which identifies projects to clone."
- echo ""
- echo "* Clone all projects:"
- echo "    $0 -a"
- echo ""
-}
-
-
 #
 function git_clone_all {
   echo "==============================================================================="
@@ -94,28 +76,4 @@ function git_clone {
   fi
 
   release_status_write_step $GIT_CLONE $STATUS_DONE
-}
-
-
-function backup {
-  if [ $# -lt 1 ]; then
-   echo ">>> Missing arguments"
-   usage
-   exit;
-  fi;
-
-  case $1 in
-    "-a")
-      git_clone_all
-      exit;
-      ;;
-    "-l")
-      git_clone_all_with_label $2
-      exit;
-      ;;
-    *)
-     git_clone_single $1
-     exit;
-     ;;
-  esac
 }
