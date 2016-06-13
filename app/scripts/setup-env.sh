@@ -2,9 +2,10 @@
 
 SCRIPTS_DIR=${0%/*}
 source ${SCRIPTS_DIR}/common.sh
+source ${SCRIPTS_DIR}/utils/credentials.sh
 
 log "==============================================================================="
-log "eXo Platform release environment automated setup"
+log "eXo Platform Release Manager (v ${EXOR_VERSION})"
 log "==============================================================================="
 
 # Copy $1 to $2 after having backed up $2 if it existed
@@ -28,7 +29,8 @@ function replaceInFile {
   mv $1.tmp $1
 }
 
-
+printHeader "Load credentials from $CREDENTIALS_FILE"
+source $CREDENTIALS_FILE
 
 printHeader "System Information"
 log ">>> Operating System :"
@@ -51,14 +53,16 @@ git config --global core.excludesfile $HOME/.gitignore
 
 # MAVEN Config
 installFile $CONFIG_DIR/settings.xml $HOME/.m2/settings.xml
-replaceInFile $HOME/.m2/settings.xml @@EXO_LOGIN@@          $exo_login
-replaceInFile $HOME/.m2/settings.xml @@EXO_PASSWORD@@       $exo_password
-replaceInFile $HOME/.m2/settings.xml @@JBOSS_LOGIN@@        $jboss_login
-replaceInFile $HOME/.m2/settings.xml @@JBOSS_PASSWORD@@     $jboss_password
-replaceInFile $HOME/.m2/settings.xml @@GPG_KEY_PASSPHRASE@@ $gpg_passphrase
-replaceInFile $HOME/.m2/settings.xml @@GPG_KEY_NAME@@       $gpg_keyname
-replaceInFile $HOME/.m2/settings.xml @@TOOLS_DIR@@          $TOOLS_DIR
-replaceInFile $HOME/.m2/settings.xml @@SERVER_DIR@@   $LOCAL_REPOSITORY_DIR
+replaceInFile $HOME/.m2/settings.xml @@NEXUS_LOGIN@@          $nexus_login
+replaceInFile $HOME/.m2/settings.xml @@NEXUS_TOKEN@@          $(decompress $nexus_token)
+replaceInFile $HOME/.m2/settings.xml @@EXO_USER@@             $exo_user
+replaceInFile $HOME/.m2/settings.xml @@EXOR_VERSION@@         $EXOR_VERSION
+replaceInFile $HOME/.m2/settings.xml @@JBOSS_LOGIN@@          $jboss_login
+replaceInFile $HOME/.m2/settings.xml @@JBOSS_PASSWORD@@       $(decompress $jboss_password)
+replaceInFile $HOME/.m2/settings.xml @@GPG_KEY_PASSPHRASE@@   $(decompress $gpg_passphrase)
+replaceInFile $HOME/.m2/settings.xml @@GPG_KEY_NAME@@         $gpg_keyname
+replaceInFile $HOME/.m2/settings.xml @@TOOLS_DIR@@            $TOOLS_DIR
+replaceInFile $HOME/.m2/settings.xml @@SERVER_DIR@@           $LOCAL_REPOSITORY_DIR
 
 # Install release.json file only if it doesn't already exist
 if [ -f "$WORKSPACE_DIR/release.json" ]
@@ -70,10 +74,11 @@ else
 fi
 
 printHeader " ==> Github Crendentials (exo-swf)..."
+export SSH_PASS=$(decompress $ssh_passphrase)
 eval "$(ssh-agent)"
 $SCRIPTS_DIR/utils/ssh-add-pass.sh
 ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-printFooter " ==> Crendentials..."
+printFooter " ==> Credentials..."
 
 log "Execute eXo Release command...($@)"
 bash -c "$SCRIPTS_DIR/eXoR.sh $@"

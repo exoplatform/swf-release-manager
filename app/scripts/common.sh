@@ -181,7 +181,7 @@ function getProjectByNameFromCatalog {
   local result=''
   # Look for the projectName into the catalog
   projectName="\"$1\""
-  ARR=( $(json -f ${DATAS_DIR}/catalog.json -Ma -c 'this.name == '$projectName'' git_organization release.version release.branch release.next_snapshot_version release.nexus_host release.nexus_staging_profile -d:) )
+  ARR=( $(json -f ${DATAS_DIR}/catalog.json -Ma -c 'this.name == '$projectName'' name git_organization release.version release.branch release.next_snapshot_version release.nexus_host release.nexus_staging_profile -d:) )
 
   if [  -z ${ARR+x}  ]; then
     # "No projects with name: " $1
@@ -192,5 +192,12 @@ function getProjectByNameFromCatalog {
      result=${project}
     done
   fi
+  echo $result
+}
+
+function getUserAgent {
+
+  result="eXo Release Manager v\"$EXOR_VERSION\" | \"$exo_user\""
+
   echo $result
 }

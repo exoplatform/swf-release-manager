@@ -33,7 +33,7 @@ function maven_dependencies_update_before_release {
        done
        ## Commit and Push all modifications
        if [ $(gitCommandIsThereFilesToCommit $1) = "true" ]; then
-         gitCommand $1 commit -a -m "$2: [eXoR] Update SNAPSHOT dependencies to RELEASE dependencies before Release."
+         gitCommand $1 commit -a -m "$2: [exo-release] Update SNAPSHOT dependencies to RELEASE dependencies before Release."
          gitCommand $1 push
        else
            log "[DEBUG] no update deps to commit."
@@ -78,7 +78,7 @@ function maven_dependencies_update_after_release {
        done
        ## Commit and Push all modifications
        if [ $(gitCommandIsThereFilesToCommit $1) = "true" ]; then
-         gitCommand $1 commit -a -m "$2: [eXoR] Update RELEASE dependencies to SNAPSHOT dependencies after Release."
+         gitCommand $1 commit -a -m "$2: [exo-release] Update RELEASE dependencies to SNAPSHOT dependencies after Release."
          gitCommand $1 push
        else
            log "[DEBUG] no update deps to commit."

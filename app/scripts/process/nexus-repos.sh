@@ -43,8 +43,8 @@ function nexus_create_staging_repo {
 
   request="\"$1\""
   STAGING_SERVER_URL=$NEXUS_REPO_URL"/service/local/staging"
-  user=$exo_login
-  pwd=$exo_password
+  user=$nexus_login
+  pwd=$(decompress $nexus_token)
 
   # Concat NEXUS PROFILE ID env variable with id from catalog
   ## to uppercase
@@ -55,14 +55,15 @@ function nexus_create_staging_repo {
   ## Update variables if we need to use JBoss infrastructure
   if [ $2 == "jboss" ]; then
    user=$jboss_login
-   pwd=$jboss_password
+   pwd=$(decompress $jboss_password)
    STAGING_SERVER_URL=$NEXUS_JBOSS_REPO_URL"/service/local/staging"
   fi
 
   # Update JSON to send datas with JIRA ID and comments
   a=$(json -I -f ${DATAS_DIR}/api/nexus-staging.json -e 'this.data.description='${request}'' )
   # Create the Staging Repo
-  response=$(curl -sS -H "Content-Type: application/json" -v -X POST -d @${DATAS_DIR}/api/nexus-staging.json -u $user:$pwd $STAGING_SERVER_URL/profiles/$NEXUS_STAGING_PROFILE_ID/start 2>/dev/null)
+  userAgent=$(getUserAgent)
+  response=$(curl -sS -H "Content-Type: application/json" -H "User-Agent: $userAgent" -v -X POST -d @${DATAS_DIR}/api/nexus-staging.json -u $user:$pwd $STAGING_SERVER_URL/profiles/$NEXUS_STAGING_PROFILE_ID/start 2>/dev/null)
   # Extraire ID from JSON response
   id=$(echo $response | json data.stagedRepositoryId)
 
