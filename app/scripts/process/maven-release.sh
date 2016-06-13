@@ -1,9 +1,8 @@
 #!/bin/bash -eu
 
 #
-# 1- Create a local release branch
-# 2- Execute release:prepare Maven command
-# 3- Store release status in release.json
+# 1- Execute release:prepare Maven command
+# 2- Store release status in release.json
 #
 function maven_prepare_release {
   # log status
@@ -16,9 +15,6 @@ function maven_prepare_release {
   devVersion=$4
   issueId=$5
   description=$6
-
-  # Create a release branch locally
-  git_release_create_branch $project $releaseVersion
 
   # Execute maven release prepare command (Don't push change on remote repository)
   mvnCommand $project release:prepare -DpushChanges=false  -Dtag=$tag -DreleaseVersion=$releaseVersion -DdevelopmentVersion=$devVersion -DscmCommentPrefix="[exo-release]($exo_user) $issueId: $description"

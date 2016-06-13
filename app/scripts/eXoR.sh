@@ -129,6 +129,9 @@ function exor_release_project {
       # Clone project
       git_clone_single $projectName || throw $exReleasePrerequisite
 
+      # Create a release branch locally
+      git_release_create_branch $projectName $releaseVersion
+
       # Execute Maven release
       maven_dependencies_update_before_release $projectName $issueId
 

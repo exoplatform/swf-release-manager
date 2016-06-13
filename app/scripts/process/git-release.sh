@@ -13,7 +13,6 @@ function git_release_delete_branch {
 }
 
 function git_release_clean_and_push {
-
    # TODO if current and next versions are different,
    # then push 1 commit on base branch
    log "Push only the tag to the remote repo"
