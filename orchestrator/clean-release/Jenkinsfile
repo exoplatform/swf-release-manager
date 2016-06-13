@@ -1,0 +1,57 @@
+def doClean(jiraID, project, action, isInParallel) {
+
+   def volume_name = "${jiraID}-${project.name}-workspace"
+   def container_name = ""
+   def container_run_option = ""
+   def docker_command = ""
+
+   // Create the right command to run in the container
+   if (action == "clean-all"){
+        // TODO
+        //  docker ps -a --filter="name=juzu"
+   } else if (action == "clean-containers"){
+       container_name = "${jiraID}-${project.name}"
+       docker_command = "rm -f"
+   } else if (action == "clean-volumes"){
+       container_name = "${jiraID}-${project.name}-workspace"
+       docker_command = "volume rm"
+   }
+
+   stage "[CLEAN] CMD: ${docker_command} on container ${container_name} for project ${project.name} for ${jiraID}"
+   sh "sudo docker ${docker_command} ${container_name}"
+}
+
+def doCleans(jiraID, projectsToClean, action, isInParallel) {
+
+   def JSONCatalog = new URL("${CATALOG_BASE_URL}/${JIRA_ID}.json")
+   def catalog = new groovy.json.JsonSlurper().parse(JSONCatalog.newReader())
+
+    echo "Number of Projects in Catalog: ${catalog.size}"
+    // Loop first on projectsToClean to keep the order
+    for (i = 0; i < projectsToClean.length; i++) {
+         def projectName = projectsToClean[i];
+         for (j = 0; j < catalog.size; j++) {
+             if (catalog[j].name == projectName) {
+                doClean(jiraID, catalog[j], action, isInParallel)
+             }
+         }
+    }
+}
+
+// Execute Release on Jenkins Slave with Docker
+node('docker') {
+
+  // Init parameters
+  stage "Init clean parameters"
+  def jiraID = "${JIRA_ID}"
+  def action = "${ACTION}"
+  def p = "${PROJECTS}"
+  def projectsToClean = p.split(',')
+  def isInParallel = true
+  echo "* Projects: ${PROJECTS}"
+  echo "* Command: ${ACTION}"
+  echo "* Projects: ${PROJECTS}"
+
+  stage "[START] Clean for ${JIRA_ID}"
+  doCleans(jiraID, projectsToClean, action, isInParallel)
+}

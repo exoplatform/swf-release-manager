@@ -3,6 +3,7 @@
 SCRIPTS_DIR=${0%/*}
 
 source ${SCRIPTS_DIR}/common.sh
+source ${SCRIPTS_DIR}/utils/credentials.sh
 source ${SCRIPTS_DIR}/utils/trycatch.sh
 source ${SCRIPTS_DIR}/process/release-catalog.sh
 source ${SCRIPTS_DIR}/process/release-status.sh
@@ -13,14 +14,16 @@ source ${SCRIPTS_DIR}/process/maven-dependencies.sh
 source ${SCRIPTS_DIR}/notifications/jira.sh
 
 echo "==============================================================================="
-echo "              ***********       eXoR      ***********                       "
+echo "         ***********       eXo Release Manager      ***********                "
 echo "==============================================================================="
 
-
+# Load credentials for subshell
+source $CREDENTIALS_FILE
 
 # Scripts to register github key file
 eval "$(ssh-agent)"
 $SCRIPTS_DIR/utils/ssh-add-pass.sh
+unset SSH_PASS
 
 #
 # Clone one or severals projects
@@ -107,13 +110,13 @@ function exor_release_project {
       log "Project: " $project
       IFS=':' read -r -a params <<< "$project"
       # Project params
-      gitOrganization=${params[0]}
-      releaseVersion=${params[1]}
+      gitOrganization=${params[1]}
+      releaseVersion=${params[2]}
       tagName=$releaseVersion
-      releaseBranch=${params[2]}
-      releaseNextSnapshotVersion=${params[3]}
-      nexus_host=${params[4]}
-      nexus_profile=${params[5]}
+      releaseBranch=${params[3]}
+      releaseNextSnapshotVersion=${params[4]}
+      nexus_host=${params[5]}
+      nexus_profile=${params[6]}
       ##############  GET PROJECT INFO #########################
 
       # Check that all informations are OK for release
@@ -226,13 +229,13 @@ function exor_release_from_step {
   log "Project: " $project
   IFS=':' read -r -a params <<< "$project"
   # Project params
-  gitOrganization=${params[0]}
-  releaseVersion=${params[1]}
+  gitOrganization=${params[1]}
+  releaseVersion=${params[2]}
   tagName=$releaseVersion
-  releaseBranch=${params[2]}
-  releaseNextSnapshotVersion=${params[3]}
-  nexus_host=${params[4]}
-  nexus_profile=${params[5]}
+  releaseBranch=${params[3]}
+  releaseNextSnapshotVersion=${params[4]}
+  nexus_host=${params[5]}
+  nexus_profile=${params[6]}
   ##############  GET PROJECT INFO #########################
 
   try
@@ -306,7 +309,7 @@ function exor_release_from_step {
 
 function checkSoftwareVersions {
 
-  log "***** eXo Platform release environment ready !!! *******"
+  log "***** eXo Platform Release Manager (v ${EXOR_VERSION}) !!! *******"
   printHeader "Check software for release"
   log "-----"
   log "JAVA VERSION "

@@ -15,7 +15,7 @@ function maven_prepare_release {
   description=$6
 
   # -DpushChanges=true : specific for GateIn pom whihc override it to false
-  mvnCommand $project release:prepare -DpushChanges=true  -Dtag=$tag -DreleaseVersion=$releaseVersion -DdevelopmentVersion=$devVersion -DscmCommentPrefix="[maven-release-plugin] [$issueId] $description"
+  mvnCommand $project release:prepare -DpushChanges=true  -Dtag=$tag -DreleaseVersion=$releaseVersion -DdevelopmentVersion=$devVersion -DscmCommentPrefix="[exo-release]($exo_user) $issueId: $description"
 
  # log status
  release_status_write_step $MAVEN_RELEASE_PREPARE $STATUS_DONE

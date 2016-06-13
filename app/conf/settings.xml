@@ -10,20 +10,56 @@
     <!-- To upload in our repositories -->
     <server>
       <id>repository.exoplatform.org</id>
-      <username>@@EXO_LOGIN@@</username>
-      <password>@@EXO_PASSWORD@@</password>
+      <username>@@NEXUS_LOGIN@@</username>
+      <password>@@NEXUS_TOKEN@@</password>
+      <configuration>
+        <httpConfiguration>
+          <put>
+            <headers>
+              <header>
+                <name>User-Agent</name>
+                <value>eXo SWF Release Manager v@@EXOR_VERSION@@ | @@EXO_USER@@</value>
+              </header>
+            </headers>
+            <params>
+              <param>
+                <name>http.authentication.preemptive</name>
+                <value>%b,true</value>
+              </param>
+            </params>
+          </put>
+        </httpConfiguration>
+      </configuration>
     </server>
     <!-- To download from our private products repositories (IDEALL, PLF...) -->
     <server>
       <id>exo.private</id>
-      <username>@@EXO_LOGIN@@</username>
-      <password>@@EXO_PASSWORD@@</password>
+      <username>@@NEXUS_LOGIN@@</username>
+      <password>@@NEXUS_TOKEN@@</password>
     </server>
     <!-- To download from our staging repositories -->
     <server>
       <id>exo.staging</id>
-      <username>@@EXO_LOGIN@@</username>
-      <password>@@EXO_PASSWORD@@</password>
+      <username>@@NEXUS_LOGIN@@</username>
+      <password>@@NEXUS_TOKEN@@</password>
+      <configuration>
+        <httpConfiguration>
+          <put>
+            <headers>
+              <header>
+                <name>User-Agent</name>
+                <value>eXo SWF Release Manager v@@EXOR_VERSION@@ | @@EXO_USER@@</value>
+              </header>
+            </headers>
+            <params>
+              <param>
+                <name>http.authentication.preemptive</name>
+                <value>%b,true</value>
+              </param>
+            </params>
+          </put>
+        </httpConfiguration>
+      </configuration>
     </server>
     <!-- =========================== -->
     <!-- JBoss.org credentials       -->

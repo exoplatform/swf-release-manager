@@ -7,15 +7,16 @@
 
 ## Add a comment to the JIRA issue
 function jira_add_comment {
-  project=$1
+  project=$(getProjectByNameFromCatalog $1)
   status=$2
   jira_id=$3
-  msg="\"@eXoR {{$project}}: *$2*\""
+  auth=$(decompress $jira_auth_header)
+  msg="\"@swf-release-manager (v ${EXOR_VERSION}) {{$project}}: *$2*\""
   body="\"body\""
   log "Add comment $msg to $jira_id";
 
   echo '{ '${body}' : '${msg}' }' > ${DATAS_DIR}/api/jira.json
-  datas=$(curl -sS -H "Content-Type: application/json" -v -X POST -d @${DATAS_DIR}/api/jira.json  -u $exo_jira_login:$exo_jira_password  ${JIRA_API_URL}issue/$jira_id/comment 2>/dev/null)
+  datas=$(curl -sS -H "Content-Type: application/json" -H "Authorization: Basic $auth" -v -X POST -d @${DATAS_DIR}/api/jira.json  ${JIRA_API_URL}issue/$jira_id/comment 2>/dev/null)
 }
 
 
