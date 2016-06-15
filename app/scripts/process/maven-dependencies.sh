@@ -31,10 +31,9 @@ function maven_dependencies_update_before_release {
          log "[DEBUG] cmd to update: $string_to_find $string_to_write $PRJ_DIR/$1"
          utils_update_pom  $string_to_find $string_to_write $PRJ_DIR/$1
        done
-       ## Commit and Push all modifications
+       ## Commit all modifications
        if [ $(gitCommandIsThereFilesToCommit $1) = "true" ]; then
          gitCommand $1 commit -a -m "$2: [exo-release] Update SNAPSHOT dependencies to RELEASE dependencies before Release."
-         gitCommand $1 push
        else
            log "[DEBUG] no update deps to commit."
        fi
@@ -76,10 +75,9 @@ function maven_dependencies_update_after_release {
          log "[DEPENDENCIES][DEBUG] cmd to update: $string_to_find $string_to_write $PRJ_DIR/$1"
          utils_update_pom  $string_to_find $string_to_write $PRJ_DIR/$1
        done
-       ## Commit and Push all modifications
+       ## Commit all modifications
        if [ $(gitCommandIsThereFilesToCommit $1) = "true" ]; then
-         gitCommand $1 commit -a -m "$2: [exo-release] Update RELEASE dependencies to SNAPSHOT dependencies after Release."
-         gitCommand $1 push
+         gitCommand $1 commit -a -m "[exo-release]($exo_user) $2: Update RELEASE dependencies to SNAPSHOT dependencies after Release."
        else
            log "[DEBUG] no update deps to commit."
        fi

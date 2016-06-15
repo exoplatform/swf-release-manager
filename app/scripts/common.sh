@@ -197,7 +197,7 @@ function getProjectByNameFromCatalog {
 
 function getUserAgent {
 
-  result="eXo Release Manager v\"$EXOR_VERSION\" | \"$exo_user\""
+  result="eXo Release Manager v$EXOR_VERSION ($exo_user)"
 
   echo $result
 }
