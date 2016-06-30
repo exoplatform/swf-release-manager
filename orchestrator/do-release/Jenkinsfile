@@ -36,6 +36,7 @@ def doRelease(exoUser, jenkinsNodeUser, jiraID, project, releaseCMD, isInParalle
         -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
         -v ${volume_name}:/opt/exo-release/workspace \
         --volumes-from m2_cache \
+        --volumes-from exo-release-tools \
         --name ${container_name} \
         ${docker_image} \
         \"${container_command}\""
