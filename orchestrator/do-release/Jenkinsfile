@@ -30,7 +30,7 @@ def doRelease(exoUser, jenkinsNodeUser, jiraID, project, releaseCMD, isInParalle
    sh "sudo docker run --rm ${container_run_option} -v /opt/${jenkinsNodeUser}/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
         -v /opt/${jenkinsNodeUser}/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
         -v /opt/${jenkinsNodeUser}/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
-        -v /opt/${jenkinsNodeUser}/.ssh/release_id_rsa:/home/ciagent/.ssh/id_rsa:ro \
+        -v /opt/${jenkinsNodeUser}/.ssh/id_rsa:/home/ciagent/.ssh/id_rsa:ro \
         --env-file /opt/${jenkinsNodeUser}/.eXo/Release/exo-release.properties \
         -e exo_user=${exoUser} \
         -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
