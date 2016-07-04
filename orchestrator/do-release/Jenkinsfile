@@ -35,8 +35,7 @@ def doRelease(exoUser, jenkinsNodeUser, jiraID, project, releaseCMD, isInParalle
         -e exo_user=${exoUser} \
         -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
         -v ${volume_name}:/opt/exo-release/workspace \
-        --volumes-from m2_cache \
-        --volumes-from exo-release-tools \
+        -v ${jiraID}-m2_cache:/home/ciagent/.m2/repository \
         --name ${container_name} \
         ${docker_image} \
         \"${container_command}\""
@@ -79,6 +78,7 @@ node('docker') {
 
   //TODO: Create m2 cache volume for the release
   stage "${JIRA_ID}-m2_cache"
+  sh "sudo docker volume create --name ${JIRA_ID}-m2_cache"
 
   doReleases(exoUser, jenkinsNodeUser, jiraID, projectsToRelease, releaseCMD, isInParallel)
 }
