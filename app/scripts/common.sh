@@ -99,7 +99,7 @@ function gitCommandIsThereFilesToCommit {
   PRJ=$1
   shift
   shift
-  if [ -z $(cd $PRJ_DIR/$PRJ && git status --porcelain  2>&1) ];
+  if [ -z "$(cd $PRJ_DIR/$PRJ && git status --porcelain  2>&1)" ];
   then
       echo "false"
   else
