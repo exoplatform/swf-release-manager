@@ -318,20 +318,20 @@ function checkSoftwareVersions {
   log "-----"
   log "JAVA VERSION "
   log "-----"
-  java -version >>${LOGS_DIR}/infos.log
+  java -version 2>&1 | tee -a ${LOGS_DIR}/infos.log
   log "JAVA_HOME = $JAVA_HOME"
   log "-----"
   log "GIT VERSION"
   log "-----"
-  git --version >>${LOGS_DIR}/infos.log
+  git --version 2>&1 | tee -a ${LOGS_DIR}/infos.log
   log "-----"
   log "MAVEN VERSION"
   log "-----"
-  mvn --version >>${LOGS_DIR}/infos.log
+  mvn --version 2>&1 | tee -a ${LOGS_DIR}/infos.log
   log "-----"
   log "JSON VERSION"
   log "-----"
-  json --version >>${LOGS_DIR}/infos.log
+  json --version 2>&1 | tee -a ${LOGS_DIR}/infos.log
   log "-----"
   printFooter "Check software for release"
 

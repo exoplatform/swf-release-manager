@@ -18,13 +18,13 @@ function db {
 function log {
   # If there are parameters read from parameters
   if [ $# -gt 0 ]; then
-    echo "[$(date +"%D %T")] $@" >> ${LOGS_DIR}/infos.log
+    echo "[$(date +"%D %T")] $@" | tee -a ${LOGS_DIR}/infos.log
     db "$@"
   else
     # If there are no parameters read from stdin
     while read data
     do
-      echo "[$(date +"%D %T")] $data" >> ${LOGS_DIR}/infos.log
+      echo "[$(date +"%D %T")] $data" | tee -a ${LOGS_DIR}/infos.log
       db "$data"
     done
   fi
@@ -33,7 +33,7 @@ function log {
 # Error function
 # Usage: error N message
 function error {
-  echo "[$(date +"%D %T")] $@" >> ${LOGS_DIR}/errors.log
+  echo "[$(date +"%D %T")] $@" | tee -a ${LOGS_DIR}/errors.log
   db "$@"
 }
 
@@ -82,9 +82,9 @@ function gitCommand {
   shift
   log "Project $PRJ : git $COMMAND in progress ..."
   if [ "$COMMAND" = "clone" ]; then
-    (cd $PRJ_DIR && git $COMMAND "$@" >>${LOGS_DIR}/infos.log 2>&1)
+    (cd $PRJ_DIR && git $COMMAND "$@" 2>&1 | tee -a ${LOGS_DIR}/infos.log)
   else
-    (cd $PRJ_DIR/$PRJ && git $COMMAND "$@" >>${LOGS_DIR}/infos.log 2>&1)
+    (cd $PRJ_DIR/$PRJ && git $COMMAND "$@" 2>&1 | tee -a ${LOGS_DIR}/infos.log)
   fi
   if [ "$?" -ne "0" ]; then
     error "!!! Sorry, git failed in $PRJ_DIR/$PRJ. Process aborted. !!!"
@@ -134,7 +134,7 @@ function mvnCommand {
   shift
   log "Project $PRJ - mvn in progress ..."
   cd $PRJ_DIR/$PRJ
-  mvn -B -e "$@" >>${LOGS_DIR}/infos.log 2>&1
+  mvn -B -e "$@" 2>&1 | tee -a ${LOGS_DIR}/infos.log
   if [ "$?" -ne "0" ]; then
     error "!!! Sorry, maven failed in $PRJ_DIR/$PRJ. Process aborted. !!!"
     exit 1

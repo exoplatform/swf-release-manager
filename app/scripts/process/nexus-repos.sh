@@ -110,7 +110,7 @@ function nexus_close_staging_repo {
   fi
   ######################  NEXUS JBOSS TESTS #####################
 
-  mvnCommand $1 nexus-staging:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 >>${LOGS_DIR}/infos.log 2>&1
+  mvnCommand $1 nexus-staging:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
   printFooter "Close Nexus Repository (Repo ID: $2)"
   # log status
   release_status_write_step $NEXUS_CLOSE_STAGING_REPO $STATUS_DONE
@@ -145,7 +145,7 @@ function nexus_drop_staging_repo {
   fi
   ######################  NEXUS JBOSS TESTS #####################
 
-  mvn nexus-staging:rc-drop -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$1 -DstagingDescription=$4 >>${LOGS_DIR}/infos.log 2>&1
+  mvn nexus-staging:rc-drop -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$1 -DstagingDescription=$4 2>&1 | tee -a ${LOGS_DIR}/infos.log
   printFooter "Drop Nexus Repository  (Repo ID: $1)"
   # log status
   release_status_write_step $NEXUS_DROP_STAGING_REPO $STATUS_DONE
@@ -183,7 +183,7 @@ function nexus_deploy_staged_repo {
   ##DEBUG
   log "[NEXUS]" $nexus_url " - " $maven_server_id " - " $NEXUS_STAGING_PROFILE_ID "-" $maven_profile
 
-  mvn nexus-staging:deploy-staged-repository -DnexusUrl=$nexus_url -DserverId=$maven_server_id -DrepositoryDirectory=${LOCAL_STAGING_DIR} -DstagingProfileId=$NEXUS_STAGING_PROFILE_ID -DstagingRepositoryId=$1 -Pexo-release,$maven_profile >>${LOGS_DIR}/infos.log 2>&1
+  mvn nexus-staging:deploy-staged-repository -DnexusUrl=$nexus_url -DserverId=$maven_server_id -DrepositoryDirectory=${LOCAL_STAGING_DIR} -DstagingProfileId=$NEXUS_STAGING_PROFILE_ID -DstagingRepositoryId=$1 -Pexo-release,$maven_profile 2>&1 | tee -a ${LOGS_DIR}/infos.log
   printFooter "Deploy Nexus Repository  (Repo ID: $1)"
   # log status
   release_status_write_step $NEXUS_DEPLOY_IN_STAGING_REPO $STATUS_DONE
@@ -212,7 +212,7 @@ function nexus_release_staging_repo {
   fi
   ######################  NEXUS JBOSS TESTS #####################
 
-  mvn nexus-staging:rc-release -DnexusUrl=$nexus_url -DserverId=$maven_server_id  -DstagingRepositoryId=$1 -DstagingDescription=$4 >>${LOGS_DIR}/infos.log 2>&1
+  mvn nexus-staging:rc-release -DnexusUrl=$nexus_url -DserverId=$maven_server_id  -DstagingRepositoryId=$1 -DstagingDescription=$4 2>&1 | tee -a ${LOGS_DIR}/infos.log
   printFooter "Release Nexus Repository  (Repo ID: $1)"
   release_status_write_step $NEXUS_RELEASE_STAGING_REPO $STATUS_DONE
 }
