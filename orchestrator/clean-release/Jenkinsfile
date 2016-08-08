@@ -1,3 +1,9 @@
+
+@NonCPS
+def jsonParser(def json) {
+    new groovy.json.JsonSlurperClassic().parse(json)
+}
+
 def doClean(jiraID, project, action, isInParallel) {
 
    def volume_name = "${jiraID}-${project.name}-workspace"
@@ -17,14 +23,14 @@ def doClean(jiraID, project, action, isInParallel) {
        docker_command = "volume rm"
    }
 
-   stage "[CLEAN] CMD: ${docker_command} on container ${container_name} for project ${project.name} for ${jiraID}"
+   stage "[CLEAN] project ${project.name} for ${jiraID}"
    sh "sudo docker ${docker_command} ${container_name}"
 }
 
 def doCleans(jiraID, projectsToClean, action, isInParallel) {
 
    def JSONCatalog = new URL("${CATALOG_BASE_URL}/${JIRA_ID}.json")
-   def catalog = new groovy.json.JsonSlurper().parse(JSONCatalog.newReader())
+   def catalog = jsonParser(JSONCatalog.newReader())
 
     echo "Number of Projects in Catalog: ${catalog.size}"
     // Loop first on projectsToClean to keep the order

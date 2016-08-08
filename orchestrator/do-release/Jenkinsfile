@@ -1,3 +1,8 @@
+@NonCPS
+def jsonParser(def json) {
+    new groovy.json.JsonSlurperClassic().parse(json)
+}
+
 def doRelease(exoUser, jenkinsNodeUser, jiraID, project, releaseCMD, isInParallel) {
 
    def volume_name = "${jiraID}-${project.name}-workspace"
@@ -45,7 +50,7 @@ def doRelease(exoUser, jenkinsNodeUser, jiraID, project, releaseCMD, isInParalle
 def doReleases(exoUser, jenkinsNodeUser, jiraID, projectsToRelease, releaseCMD, isInParallel) {
 
    def JSONCatalog = new URL("${CATALOG_BASE_URL}/${JIRA_ID}.json")
-   def catalog = new groovy.json.JsonSlurper().parse(JSONCatalog.newReader())
+   def catalog = jsonParser(JSONCatalog.newReader())
 
     echo "Number of Projects in Catalog: ${catalog.size}"
     // Loop first on projectsToRelease to keep the order
@@ -76,9 +81,9 @@ node('docker') {
   echo "* Projects: ${PROJECTS}"
   echo "* Releases in Parallel? ${isInParallel}"
 
-  //TODO: Create m2 cache volume for the release
+  //Create m2 cache volume for the release
   stage "${JIRA_ID}-m2_cache"
-  sh "sudo docker volume create --name ${JIRA_ID}-m2_cache"
+  sh "sudo docker volume create --name ${JIRA_ID}-m2_cache --opt o=uid=1000"
 
   doReleases(exoUser, jenkinsNodeUser, jiraID, projectsToRelease, releaseCMD, isInParallel)
 }
