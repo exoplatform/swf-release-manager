@@ -83,7 +83,7 @@ node('docker') {
 
   //Create m2 cache volume for the release
   stage "${JIRA_ID}-m2_cache"
-  sh "sudo docker volume create --name ${JIRA_ID}-m2_cache --opt o=uid=1000"
+  sh "sudo docker volume create --name ${JIRA_ID}-m2_cache --driver local --opt o=uid=1000"
 
   doReleases(exoUser, jenkinsNodeUser, jiraID, projectsToRelease, releaseCMD, isInParallel)
 }
