@@ -99,7 +99,7 @@ function nexus_close_staging_repo {
   maven_server_id=$NEXUS_STAGING_SERVER_ID
   # Concat NEXUS PROFILE ID env variable with id from catalog
   ## to uppercase
-  profile=$(echo $3 | tr [a-z] [A-Z])
+  profile=$(echo $4 | tr [a-z] [A-Z])
   NEXUS_PROFILE_STRING=NEXUS_STAGING_PROFILE_${profile}_ID
   eval NEXUS_STAGING_PROFILE_ID="\$$NEXUS_PROFILE_STRING"
 
