@@ -85,7 +85,7 @@ function maven_dependencies_update_after_release {
    fi
    printFooter "Update dependencies AFTER release for $1"
    # log status
-   release_status_write_step $MAVEN_DEPS_AFTER $STATUS_IN_DONE
+   release_status_write_step $MAVEN_DEPS_AFTER $STATUS_DONE
 }
 
 function utils_update_file {
