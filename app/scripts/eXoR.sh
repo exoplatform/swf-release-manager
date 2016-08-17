@@ -136,7 +136,7 @@ function exor_release_project {
       # Execute Maven release
       maven_dependencies_update_before_release $projectName $issueId
 
-      maven_prepare_release $projectName $tagName $releaseVersion $releaseNextSnapshotVersion $issueId || throw $exProjectBuild
+      maven_prepare_release $projectName $tagName $releaseVersion $releaseNextSnapshotVersion $issueId $projectName || throw $exProjectBuild
       # Notification to JIRA issue
       jira_add_comment $projectName "release_prepare_OK" $issueId
 
