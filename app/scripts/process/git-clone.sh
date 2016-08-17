@@ -1,4 +1,5 @@
 #!/bin/bash -eu
+set -o pipefail
 
 #
 function git_clone_all {

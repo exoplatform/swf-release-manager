@@ -1,4 +1,5 @@
 #!/bin/bash -eu
+set -o pipefail
 
 #
 # Update maven properties which defines maven dependencies versions.

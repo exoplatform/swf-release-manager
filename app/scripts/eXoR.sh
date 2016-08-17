@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash -eu
+set -o pipefail
 
 SCRIPTS_DIR=${0%/*}
 

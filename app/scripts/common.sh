@@ -1,4 +1,5 @@
 #!/bin/bash -eu
+set -o pipefail
 
 DATE=`date "+%Y-%m-%d--%H-%M-%S"`
 SEP="`echo | tr '\n' '\001'`"

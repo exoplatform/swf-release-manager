@@ -1,4 +1,5 @@
 #!/bin/bash -eu
+set -o pipefail
 
 #
 # 1- Execute release:prepare Maven command

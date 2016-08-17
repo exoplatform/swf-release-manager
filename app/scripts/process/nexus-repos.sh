@@ -1,4 +1,5 @@
 #!/bin/bash -eu
+set -o pipefail
 
 ##
 # All commands related to Nexus Staging Repositories

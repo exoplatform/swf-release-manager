@@ -1,5 +1,7 @@
 #!/bin/bash -eu
 
+set -o pipefail
+
 ##
 # All actions related to the communication with JIRA
 #
