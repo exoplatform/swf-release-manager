@@ -152,6 +152,7 @@ export exReleasePrerequisite=100
 export exReleasePrerequisiteKO=103
 # Code 2xx for Maven errors
 export exProjectBuild=200
+export exProjectBuildKO=203
 # Code 3xx for Nexus errors
 export exNexusStaging=300
 
