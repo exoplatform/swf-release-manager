@@ -63,7 +63,7 @@ replaceInFile $HOME/.m2/settings.xml @@JBOSS_PASSWORD@@       $(decompress $jbos
 replaceInFile $HOME/.m2/settings.xml @@GPG_KEY_PASSPHRASE@@   $(decompress $gpg_passphrase)
 replaceInFile $HOME/.m2/settings.xml @@GPG_KEY_NAME@@         $gpg_keyname
 replaceInFile $HOME/.m2/settings.xml @@TOOLS_DIR@@            $TOOLS_DIR
-replaceInFile $HOME/.m2/settings.xml @@SERVER_DIR@@           $LOCAL_REPOSITORY_DIR
+replaceInFile $HOME/.m2/settings.xml @@SERVER_DIR@@           $LOCAL_DEPENDENCIES_DIR
 
 # Install release.json file only if it doesn't already exist
 if [ -f "$WORKSPACE_DIR/release.json" ]
