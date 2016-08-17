@@ -149,6 +149,7 @@ function mvnCommand {
 #
 # Define possible Exception during the process
 export exReleasePrerequisite=100
+export exReleasePrerequisiteKO=103
 # Code 2xx for Maven errors
 export exProjectBuild=200
 # Code 3xx for Nexus errors
