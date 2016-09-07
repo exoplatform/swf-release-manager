@@ -3,7 +3,7 @@ def jsonParser(def json) {
     new groovy.json.JsonSlurperClassic().parse(json)
 }
 
-def doRelease(exoUser, jenkinsNodeUser, jiraID, project, releaseCMD, isInParallel) {
+def doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInParallel) {
 
    def volume_name = "${jiraID}-${project.name}-workspace"
    def container_name = "${jiraID}-${project.name}"
@@ -32,11 +32,11 @@ def doRelease(exoUser, jenkinsNodeUser, jiraID, project, releaseCMD, isInParalle
    }
 
    stage "Container ${container_name}"
-   sh "sudo docker run --rm ${container_run_option} -v /opt/${jenkinsNodeUser}/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
-        -v /opt/${jenkinsNodeUser}/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
-        -v /opt/${jenkinsNodeUser}/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
-        -v /opt/${jenkinsNodeUser}/.ssh/id_rsa:/home/ciagent/.ssh/id_rsa:ro \
-        --env-file /opt/${jenkinsNodeUser}/.eXo/Release/exo-release.properties \
+   sh "sudo docker run --rm ${container_run_option} -v /${jenkinsAgentRootPath}/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
+        -v /${jenkinsAgentRootPath}/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
+        -v /${jenkinsAgentRootPath}/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
+        -v /${jenkinsAgentRootPath}/.ssh/id_rsa:/home/ciagent/.ssh/id_rsa:ro \
+        --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
         -e exo_user=${exoUser} \
         -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
         -v ${volume_name}:/opt/exo-release/workspace \
@@ -47,7 +47,7 @@ def doRelease(exoUser, jenkinsNodeUser, jiraID, project, releaseCMD, isInParalle
 }
 
 // Read Datas from JSON Catalog and executes releases
-def doReleases(exoUser, jenkinsNodeUser, jiraID, projectsToRelease, releaseCMD, isInParallel) {
+def doReleases(exoUser, jenkinsAgentRootPath, jiraID, projectsToRelease, releaseCMD, isInParallel) {
 
    def JSONCatalog = new URL("${CATALOG_BASE_URL}/${JIRA_ID}.json")
    def catalog = jsonParser(JSONCatalog.newReader())
@@ -58,7 +58,7 @@ def doReleases(exoUser, jenkinsNodeUser, jiraID, projectsToRelease, releaseCMD, 
          def projectName = projectsToRelease[i];
          for (j = 0; j < catalog.size; j++) {
              if (catalog[j].name == projectName) {
-                doRelease(exoUser, jenkinsNodeUser, jiraID, catalog[j], releaseCMD, isInParallel)
+                doRelease(exoUser, jenkinsAgentRootPath, jiraID, catalog[j], releaseCMD, isInParallel)
              }
          }
     }
@@ -74,7 +74,7 @@ node('docker') {
   def p = "${PROJECTS}"
   def projectsToRelease = p.split(',')
   def isInParallel = "${RELEASE_PROJECTS_IN_PARALLEL}"
-  def jenkinsNodeUser = "${JENKINS_NODE_USER}"
+  def jenkinsAgentRootPath = "${JENKINS_AGENT_ROOT_PATH}"
   def exoUser = "${BUILD_USER_ID}"
   echo "* Projects: ${PROJECTS}"
   echo "* Command: ${RELEASE_CMD}"
@@ -85,5 +85,5 @@ node('docker') {
   stage "${JIRA_ID}-m2_cache"
   sh "sudo docker volume create --name ${JIRA_ID}-m2_cache"
 
-  doReleases(exoUser, jenkinsNodeUser, jiraID, projectsToRelease, releaseCMD, isInParallel)
+  doReleases(exoUser, jenkinsAgentRootPath, jiraID, projectsToRelease, releaseCMD, isInParallel)
 }
