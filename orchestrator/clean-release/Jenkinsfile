@@ -1,4 +1,4 @@
-
+#!/usr/bin/groovy
 @NonCPS
 def jsonParser(def json) {
     new groovy.json.JsonSlurperClassic().parse(json)
@@ -36,8 +36,12 @@ def doCleans(jiraID, projectsToClean, action, isInParallel) {
     // Loop first on projectsToClean to keep the order
     for (i = 0; i < projectsToClean.length; i++) {
          def projectName = projectsToClean[i];
+         boolean cleanAll = false
+         if (projectName.equals('*')){
+             cleanAll = true
+         }
          for (j = 0; j < catalog.size; j++) {
-             if (catalog[j].name == projectName) {
+             if (catalog[j].name == projectName || cleanAll) {
                 doClean(jiraID, catalog[j], action, isInParallel)
              }
          }
