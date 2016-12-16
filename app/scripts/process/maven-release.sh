@@ -49,9 +49,6 @@ function maven_perform_release {
   # Execute maven release perform command
   mvnCommand $project release:perform $releaseArgs "-Darguments=${releaseArgsSkipTests} -DaltDeploymentRepository=local::default::file://${LOCAL_STAGING_DIR}"
 
-  # Drop release branch and clean useless commits and push
-  git_release_clean_and_push $project $releaseVersion
-
   # log status
   release_status_write_step $MAVEN_RELEASE_PERFORM $STATUS_DONE
 }

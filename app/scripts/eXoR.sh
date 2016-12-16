@@ -200,11 +200,34 @@ function exor_release_init_json {
 
 #
 # Validate a Release
+# * Push git tag to the remote repository
 # * Release Nexus repository
 # * Add comment to the issue
 function exor_validate_release {
   printHeader "Validate Release"
+
+  ##############  GET PROJECT INFO #########################
+  projectName=$(release_status_get_project_id)
+  project=$(getProjectByNameFromCatalog $projectName)
+  if [ "$project" == "0" ]; then
+      # Project not found, stop the process
+    error "Project not found!"
+    throw $exReleasePrerequisiteKO
+  fi
+
+  log "Project: " $projectName
+  IFS=':' read -r -a params <<< "$project"
+  # Project params
+  gitOrganization=${params[1]}
+  releaseVersion=${params[2]}
+  tagName=$releaseVersion
+  ##############  GET PROJECT INFO #########################
+
+  # Release Nexus Repository
   exor_release_from_step nexus:release
+
+  # Push git tag to remote
+  git_release_clean_and_push $projectName $releaseVersion
   printFooter "Validate Release"
 }
 
