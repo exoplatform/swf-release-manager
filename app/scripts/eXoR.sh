@@ -232,10 +232,42 @@ function exor_validate_release {
 }
 
 #
-# Invalidate release
+# Cancel a release:
+# * Remove git project 
+# * Remove Nexus local staging 
+# * Remote Nexus remote staging repository
 #
-function exor_invalidate_release {
-  echo "unvalidate"
+function exor_cancel_release {
+  printHeader "Cancel Release"
+
+  ##############  GET PROJECT INFO #########################
+  projectName=$(release_status_get_project_id)
+  project=$(getProjectByNameFromCatalog $projectName)
+  if [ "$project" == "0" ]; then
+      # Project not found, stop the process
+    error "Project not found!"
+    throw $exReleasePrerequisiteKO
+  fi
+
+  log "Project: " $projectName
+  IFS=':' read -r -a params <<< "$project"
+  # Project params
+  gitOrganization=${params[1]}
+  releaseVersion=${params[2]}
+  tagName=$releaseVersion
+  ##############  GET PROJECT INFO #########################
+
+  # Drop Remote Nexus Repository
+  exor_release_from_step nexus:drop
+
+  # Remove git project datas
+  rm -rf ${PRJ_DIR}/*
+  # Remove Nexus local staging
+  rm -rf ${LOCAL_STAGING_DIR}/*
+  # Remove release.json
+  rm ${WORKSPACE_DIR}/release.json
+
+  printFooter "Cancel Release"
 }
 
 
@@ -378,7 +410,7 @@ function usage {
   echo "* eXoR release-continue-from STEP "
   echo "** STEP = nexus:create / nexus:deploy / nexus:close / nexus:drop / nexus:release"
   echo "* eXoR release-validate JIRA_ID"
-  echo "* eXoR release-invalidate JIRA_ID"
+  echo "* eXoR release-cancel JIRA_ID"
   echo "* eXoR release-init-json PROJECT JIRA_ID"
   echo "==== HELP ===="
 }
@@ -430,8 +462,8 @@ case $1 in
     exor_validate_release $@
     exit;
     ;;
-  "release-invalidate")
-    exor_invalidate_release $@
+  "release-cancel")
+    exor_cancel_release $@
     exit;
     ;;
   "list")
