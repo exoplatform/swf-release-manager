@@ -147,6 +147,10 @@ function nexus_drop_staging_repo {
   ######################  NEXUS JBOSS TESTS #####################
 
   mvn nexus-staging:rc-drop -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$1 -DstagingDescription=$4 2>&1 | tee -a ${LOGS_DIR}/infos.log
+  if [ "$?" -ne "0" ]; then
+    error "!!! Sorry, maven failed to close Drop Repository (Repo ID: $1). Process aborted. !!!"
+    exit 1
+  fi
   printFooter "Drop Nexus Repository  (Repo ID: $1)"
   # log status
   release_status_write_step $NEXUS_DROP_STAGING_REPO $STATUS_DONE
@@ -185,6 +189,10 @@ function nexus_deploy_staged_repo {
   log "[NEXUS]" $nexus_url " - " $maven_server_id " - " $NEXUS_STAGING_PROFILE_ID "-" $maven_profile
 
   mvn nexus-staging:deploy-staged-repository -DnexusUrl=$nexus_url -DserverId=$maven_server_id -DrepositoryDirectory=${LOCAL_STAGING_DIR} -DstagingProfileId=$NEXUS_STAGING_PROFILE_ID -DstagingRepositoryId=$1 -Pexo-release,$maven_profile 2>&1 | tee -a ${LOGS_DIR}/infos.log
+  if [ "$?" -ne "0" ]; then
+    error "!!! Sorry, maven failed to deploy Nexus Repository (Repo ID: $1). Process aborted. !!!"
+    exit 1
+  fi
   printFooter "Deploy Nexus Repository  (Repo ID: $1)"
   # log status
   release_status_write_step $NEXUS_DEPLOY_IN_STAGING_REPO $STATUS_DONE
@@ -214,6 +222,10 @@ function nexus_release_staging_repo {
   ######################  NEXUS JBOSS TESTS #####################
 
   mvn nexus-staging:rc-release -DnexusUrl=$nexus_url -DserverId=$maven_server_id  -DstagingRepositoryId=$1 -DstagingDescription=$4 2>&1 | tee -a ${LOGS_DIR}/infos.log
+  if [ "$?" -ne "0" ]; then
+    error "!!! Sorry, maven failed to close Nexus Repository (Repo ID: $2). Process aborted. !!!"
+    exit 1
+  fi
   printFooter "Release Nexus Repository  (Repo ID: $1)"
   release_status_write_step $NEXUS_RELEASE_STAGING_REPO $STATUS_DONE
 }
