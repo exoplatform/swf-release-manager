@@ -18,6 +18,8 @@ def doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInPa
         container_command = "release-start ${project.name} ${jiraID}"
    } else if (releaseCMD == "validate"){
        container_command = "release-validate ${jiraID}"
+   } else if (releaseCMD == "cancel"){
+       container_command = "release-cancel ${project.name} ${jiraID}" 
    } else if (releaseCMD == "catalog-from-url"){
        container_command = "catalog-from-url ${jiraID}"
    } else if (releaseCMD == "release-continue-from nexus:create"){
@@ -26,25 +28,37 @@ def doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInPa
        container_command = "release-continue-from nexus:deploy"
    } else if (releaseCMD == "release-continue-from nexus:close"){
        container_command = "release-continue-from nexus:close"
+   } else {
+       echo "Nothing to do."
    }
 
    if (isInParallel == "true"){
        container_run_option = "-d"
    }
 
-   stage "Container ${container_name}"
-   sh "sudo docker run --rm ${container_run_option} -v /${jenkinsAgentRootPath}/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
-        -v /${jenkinsAgentRootPath}/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
-        -v /${jenkinsAgentRootPath}/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
-        -v /${jenkinsAgentRootPath}/.ssh/id_rsa:/home/ciagent/.ssh/id_rsa:ro \
-        --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
-        -e exo_user=${exoUser} \
-        -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
-        -v ${volume_name}:/opt/exo-release/workspace \
-        -v ${jiraID}-m2_cache:/home/ciagent/.m2/repository \
-        --name ${container_name} \
-        ${docker_image} \
-        \"${container_command}\""
+   stage("Container ${container_name}"){
+        sh "sudo docker run --rm ${container_run_option} -v /${jenkinsAgentRootPath}/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
+                -v /${jenkinsAgentRootPath}/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
+                -v /${jenkinsAgentRootPath}/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
+                -v /${jenkinsAgentRootPath}/.ssh/id_rsa:/home/ciagent/.ssh/id_rsa:ro \
+                --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
+                -e exo_user=${exoUser} \
+                -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
+                -v ${volume_name}:/opt/exo-release/workspace \
+                -v ${jiraID}-m2_cache:/home/ciagent/.m2/repository \
+                --name ${container_name} \
+                ${docker_image} \
+                \"${container_command}\""
+    }
+
+    //RELMAN-3:
+    if (releaseCMD == "cancel"){
+        stage("Container ${container_name} (cleanup)"){
+            sh "sudo docker volume rm ${volume_name}"
+            sh "sudo docker volume rm ${jiraID}-m2_cache"
+        }
+    }
+    
 }
 
 // Read Datas from JSON Catalog and executes releases
