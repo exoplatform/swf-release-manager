@@ -1,0 +1,279 @@
+= Release Manager - User Guide
+:imagesdir: ./images/
+:toc:
+
+This is the *user guide* to be able to release one or several eXo projects.
+
+[IMPORTANT]
+.Prerequisites
+--
+Check with the *Engineering team* the projects and versions to Release.
+--
+
+
+== Overview
+
+image::exo-release-manager-overview.png[]
+
+== Release Process
+
+There are 3 big parts for the eXo Release Process:
+
+. first, *create the required resources* (JIRA, JSON catalog) for the Release and *synchronize* GitHub repositories
+. then *execute* the eXo Release from Jenkins
+. finally, clean up used resources
+
+=== Prepare the Release
+
+==== Create the JIRA SWF
+
+All the Release Process is based on a JIRA ID, so a JIRA Release must be created with the following params:
+
+JIRA Project:: *Company Software Factory (SWF)* : *https://jira.exoplatform.org/browse/SWF*
+JIRA Summary:: *[Release]*...
++
+[IMPORTANT]
+It's *mandatory* to start the Summary with the prefix *[Release]* (for Jenkins Job ) +
+_example: [Release] Weekly Releases W27_
++
+JIRA Components:: Support
+JIRA Description:: Add all projects to release with *Git branches and versions*
++
+
+[source,jira]
+----
+GateIn Portal
+/----
+** Release version: *{{4.4.0-M06-PLF}}*
+** Release branch: https://github.com/exoplatform/gatein-portal/tree/develop
+
+PLF
+/----
+* PLF projects from {{platform-ui}} to {{platform}} version
+** Release version: *{{4.4.0-M06}}*
+** Release branch: https://github.com/exoplatform/commons/tree/develop
+
+Chat Application
+/----
+* Release version: *{{1.4.0-M04}}*
+* Release branch: https://github.com/exoplatform/chat-application/tree/develop
+----
++
+
+[TIP]
+Use an existing one https://jira.exoplatform.org/browse/SWF-3688 and clone it.
+
+
+==== Create the JSON Catalog
+
+Based on the *JIRA description about project to release* and the eXo Components diagram, create the JSON Catalog
+for the release:
+
+[source,json]
+.JSON Catalog example
+----
+...
+
+{
+     "name":"wiki",  <1>
+     "git_organization":"exoplatform",    <2>
+     "labels":"plf",   <3>
+     "maven_property_version":"org.exoplatform.wiki.version",   <4>
+     "container": {
+       "image": "exoplatform/release:jdk8-maven32",    <5>
+       "step": 6        <6>
+     },
+     "release":{
+        "branch":"develop",     <7>
+        "version":"4.4.0-M06",    <8>
+        "current_snapshot_version":"4.4.x-SNAPSHOT",    <9>
+        "next_snapshot_version":"4.4.x-SNAPSHOT",     <10>
+        "patches":"",     <11>
+        "patches_after_release":"",    <12>
+        "nexus_host":"exoplatform",     <13>
+        "nexus_staging_profile":"public"   <14>
+     }
+  },
+  {
+     "name":"social",
+     "git_organization":"exoplatform",
+     "labels":"plf",
+     "maven_property_version":"org.exoplatform.social.version",
+     "container": {
+       "image": "exoplatform/release:jdk8-maven32",
+       "step": 5
+     },
+     "release":{
+        "branch":"develop",
+        "version":"4.4.0-M06",
+        "current_snapshot_version":"4.4.x-SNAPSHOT",
+        "next_snapshot_version":"4.4.x-SNAPSHOT",
+        "patches":"",
+        "patches_after_release":"",
+        "nexus_host":"exoplatform",
+        "nexus_staging_profile":"public"
+     }
+  },
+...
+----
+<1> *GitHub* project name
+<2> *GitHub* organization to used
+<3> *NOT USED for now* (will be use to build projects by category instead of given all projects names to the process)
+<4> *Maven property* to find in Maven POMs of *others projects* which depends on this project (in order to replace the SNAPSHOT version by the RELEASE one)
+<5> *eXo Docker Image* to use to build and release the project (be careful of the Maven and JDK stack)
+<6> *NOT USED for now* (will be use to build projects in parallel if no maven dependencies between projects)
+<7> *Git branch* to use for the basecode to build
+<8> *Version to Release* for this project
+<9> *Current version* of the project to replace in the POMs project *AND in projects which depends on it*
+<10> *Next version* to set *in projects which depends on it*
+<11> *NOT USED for now* (used by old release scripts, remove it?)
+<12> *NOT USED for now* (used by old release scripts, remove it?)
+<13> *Nexus Host* to use for the project
+<14> *Nexus Staging Profile* to use for the project
+
+[IMPORTANT]
+The *Nexus Staging Profile*  is very important specially for Private and Private Trial projects.
+
+
+==== Execute Jenkins jobs for Synchronization
+
+As eXo Releases are only executed on *eXoPlatform* GitHub organization, we need to synchronize codebase between others organization and this one:
+
+. Execute the following jobs to synchronize all GitHub repositories:
+.. Sync *exodev* with *exoplatform* projects
+... https://ci.exoplatform.org/job/infra-synchronize-dev-blessed-develop/
+.. Sync *exo-addons* with *exoplatform* projects
+... https://ci.exoplatform.org/job/infra-synchronize-addons-repositories/
+. *deactivate* those Jenkins jobs during the *Release Process*
+
+=== Execute the Release
+
+==== Start the Release
+
+* Go to the *eXo Release Multiple Projects* Jenkins job:
+** https://ci.exoplatform.org/job/exo-release-multiple-projects/
+* Build it with the following parameters:
+** *JIRA_ID*: Select the JIRA issue that you have created for the release
+** *CATALOG_BASE_URL*: Keep the default URL or update it if you use anoter location for JSON catalog
+** *PROJECTS*: fill all the projects you want to release (projects have to be declared in JSON Catalog)
++
+[IMPORTANT]
+be careful to the order of the projects, they will be released in the order you add it.
++
+** *RELEASE_CMD*: Choose the *start* command
+** *RELEASE_PROJECTS_IN_PARALLEL*: keep this box unchecked
+** *JENKINS_NODE_USER*: keep the default user
+** *BUILD_USER_ID*: set your username
+
+==== Validate the Release
+
+When the Release *start* step is OK (it means that all projects have been tested from the Staging Repositories),
+you can validate the release by release all Nexus repositories:
+
+* Go to the *eXo Release Multiple Projects* Jenkins job:
+** https://ci.exoplatform.org/job/exo-release-multiple-projects/
+* Build it with the following parameters:
+** *JIRA_ID*: Select the JIRA issue that you have created for the release
+** *CATALOG_BASE_URL*: Keep the default URL or update it if you use anoter location for JSON catalog
+** *PROJECTS*: fill all the projects you want to validate the release (projects have to be declared in JSON Catalog)
+** *RELEASE_CMD*: Choose the *validate* command
+** *RELEASE_PROJECTS_IN_PARALLEL*: keep this box unchecked
+** *JENKINS_NODE_USER*: keep the default user
+** *BUILD_USER_ID*: set your username
+
+=== Notify and Clean up resources
+
+* If PLF has been released then *notify the CWI team* about that, so that they can use it
+** write a message on the eXo Tribe Chat Room *ITOP & CWI / PRD*
+* Clean all Docker containers and volumes with Jenkins Job:
+** https://ci.exoplatform.org/job/exo-release-clean-resources/
+* *Re-activate* Jenkins jobs for synchronization:
+** https://ci.exoplatform.org/job/infra-synchronize-dev-blessed-develop/
+** https://ci.exoplatform.org/job/infra-synchronize-addons-repositories/
+
+
+== Known issues
+
+=== Nexus Repository: Rule "RepositoryWritePolicy" failures
+
+The Nexus Repository failed to release because of *properties file*
+
+[source, text]
+----
+[ERROR]
+[ERROR] Nexus Staging Rules Failure Report
+[ERROR] ==================================
+[ERROR]
+[ERROR] Repository "exo_public_releases-2146" failures
+[ERROR]   Rule "RepositoryWritePolicy" failures
+[ERROR]     * Artifact updating: Repository ='exo-releases:[H][R] eXo Releases' does not allow updating artifact='/129ae1bfa78515.properties'
+----
+====
+This problem is due to the fact that you have launch the release twice (until step nexus:close) without cleaning the workspace before the 2nd execution.
+So you have a XXXX.properties files which contains references to a unknown (removed)  Nexus Staging repository. +
+
+*SOLUTION*
+
+. Remove the Nexus Staging repository
+. Remove the Release Workspace Docker volume
+. Re-execute the release
+====
+
+
+== FAQ
+
+=== How to see release logs for each project?
+
+Connect to the server *release.exoplatform.org* and inspect the related Docker volume, all the data are in those volumes.
+
+=== How to quickly reuse a failed Jenkins Job?
+
+Use the *Rebuild* Jenkins option to have the form pre-filled and update the projects to release if needeed. +
+Be careful, check the *right JIRA_ID* which is not selected by default.
+
+=== How to run/test the eXo Release Manager locally?
+
+. On `swf-release-manager` project
+.. Update Application scripts
+.. Build an archive for eXo Release Manager with bugs fixed
+... `tar -cvzf exo-release-manager.tar.gz .`
+. On `exo-release` project:
+.. Update Dockerfile to ADD `exo-release-manager.tar.gz` into the Docker Image
++
+[source,shell]
+----
+...
+ADD exo-release-manager.tar.gz ${EXO_CI_TMP_DIR}
+RUN cp -R ${EXO_CI_TMP_DIR}/app/conf/* ${CONFIG_DIR} \
+        && cp -R ${EXO_CI_TMP_DIR}/app/scripts/* ${SCRIPTS_DIR} \
+        && cp -R ${EXO_CI_TMP_DIR}/app/datas/* ${DATAS_DIR} \
+        && chmod u+x ${SCRIPTS_DIR}/*.sh \
+        && chmod u+x ${SCRIPTS_DIR}/utils/*.sh
+...
+----
++
+.. Build the Docker Image
++
+[source,shell]
+----
+$ docker build --build-arg ssh_passphrase='XXX' --build-arg nexus_token='XXXX' --build-arg gpg_passphrase='XXX' --build-arg jira_auth_header='XXXX' --build-arg jboss_password='XXX' -t exoplatform/release:RELMAN-1 .
+----
++
+. Use the `RELEASE-155` JIRA to test a release with the `maven-sandbox-project`
++
+[source,shell]
+----
+$ docker run --rm -v ~/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
+        -v ~/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
+        -v ~/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
+        -v ~/.ssh/mgreau_rsa:/home/ciagent/.ssh/id_rsa:ro \
+        --env-file ~/.eXo/Release/exo-release.properties \
+        -e exo_user=mgreau \
+        -e CATALOG_BASE_URL=https://raw.githubusercontent.com/exoplatform/swf-release-manager-catalog/master/exo-platform/ \
+        -v RELEASE-155-maven-sandbox-project-workspace:/opt/exo-release/workspace \
+        -v ~/.m2/repository:/home/ciagent/.m2/repository \
+        --name RELEASE-155-maven-sandbox-project \
+        exoplatform/release:RELMAN-1 \
+        "release-start maven-sandbox-project RELEASE-155"
+----
++
