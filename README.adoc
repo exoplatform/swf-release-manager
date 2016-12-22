@@ -1,4 +1,15 @@
 = eXo Release Manager
+:toc:
+ifdef::env-github[]
+:status:
+:outfilesuffix: .adoc
+:!toc-title:
+:caution-caption: :fire:
+:important-caption: :exclamation:
+:note-caption: :paperclip:
+:tip-caption: :bulb:
+:warning-caption: :warning:
+endif::[]
 
 This repository contains all files about the eXo Release Manager:
 
