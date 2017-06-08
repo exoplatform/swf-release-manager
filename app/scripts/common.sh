@@ -166,7 +166,7 @@ function displayAvailableProjects {
       for project in "${ARR[@]}"
       do
         IFS=': ' read -r -a params <<< "$project"
-        log "* ${params[0]} - ${params[1]} - ${params[4]} (${params[3]})"
+        log "* ${params[0]} - ${params[1]} - ${params[3]} (${params[2]})"
       done
     fi
   else
