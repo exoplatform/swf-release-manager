@@ -61,22 +61,48 @@ def doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInPa
     
 }
 
-// Read Datas from JSON Catalog and executes releases
-def doReleases(exoUser, jenkinsAgentRootPath, jiraID, projectsToRelease, releaseCMD, isInParallel) {
+// Read data from JSON Catalog and executes an action on the specified projects
+def executeActionOnProjects(projects, action) {
 
-   def JSONCatalog = new URL("${CATALOG_BASE_URL}/${JIRA_ID}.json")
-   def catalog = jsonParser(JSONCatalog.newReader())
+    def JSONCatalog = new URL("${CATALOG_BASE_URL}/${JIRA_ID}.json")
+    def catalog = jsonParser(JSONCatalog.newReader())
 
     echo "Number of Projects in Catalog: ${catalog.size}"
     // Loop first on projectsToRelease to keep the order
-    for (i = 0; i < projectsToRelease.length; i++) {
-         def projectName = projectsToRelease[i];
-         for (j = 0; j < catalog.size; j++) {
-             if (catalog[j].name == projectName) {
-                doRelease(exoUser, jenkinsAgentRootPath, jiraID, catalog[j], releaseCMD, isInParallel)
-             }
-         }
+    for (i = 0; i < projects.length; i++) {
+        def projectName = projects[i];
+        for (j = 0; j < catalog.size; j++) {
+            if (catalog[j].name == projectName) {
+                action(catalog[j])
+            }
+        }
     }
+}
+
+def validateProjectsToRelease(projects) {
+  def valid = true
+  // Map containing the projects found in the catalog and the number of actions performed
+  def releasedProjects = [:]
+  def releasedProjectCounter = { project -> 
+    def name = project.name
+    releasedProjects[name] = releasedProjects.containsKey(name) ? releasedProjects[name]+1 : 1
+  }
+  
+  executeActionOnProjects(projects, releasedProjectCounter)
+  
+  // check if  all the projects were found on the json
+  def unreleasedProjects = projects - releasedProjects.keySet()
+  if(unreleasedProjects.length > 0) {
+    echo "ERROR The project(s) ${unreleasedProjects} were not found in the catalog file."
+    valid = false
+  }
+  // Check if no project was present several times on the json
+  def duplicates = releasedProjects.findAll({ it.value > 1 }).keySet()
+  if(duplicates) {
+    echo "ERROR The project(s) ${duplicates} are released several times or are present several times on the json file."
+    valide = false
+  }
+  valid
 }
 
 // Execute Release on Jenkins Slave with Docker
@@ -92,13 +118,23 @@ node('docker') {
   def jenkinsAgentRootPath = "${JENKINS_AGENT_ROOT_PATH}"
   def exoUser = "${BUILD_USER_ID}"
   echo "* Projects: ${PROJECTS}"
+  echo "* Projects computed: ${projectsToRelease}"
   echo "* Command: ${RELEASE_CMD}"
   echo "* Projects: ${PROJECTS}"
   echo "* Releases in Parallel? ${isInParallel}"
+
+  stage "${JIRA_ID}-projects_validation"
+  if ( ! validateProjectsToRelease(projectsToRelease) ) {
+    currentBuild.result = "FAIL"
+    return
+  }
 
   //Create m2 cache volume for the release
   stage "${JIRA_ID}-m2_cache"
   sh "sudo docker volume create --name ${JIRA_ID}-m2_cache"
 
-  doReleases(exoUser, jenkinsAgentRootPath, jiraID, projectsToRelease, releaseCMD, isInParallel)
+  stage "${JIRA_ID}-do_release"
+  executeActionOnProjects(projectsToRelease, { project ->
+    doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInParallel)
+  })
 }
