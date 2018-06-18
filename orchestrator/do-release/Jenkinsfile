@@ -4,7 +4,13 @@ def jsonParser(def json) {
     new groovy.json.JsonSlurperClassic().parse(json)
 }
 
-def doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInParallel) {
+@NonCPS
+def createBasicAuthString(credentials) {
+    def authString = credentials.getBytes().encodeBase64().toString();
+    [Authorization: "Basic " + authString]
+}
+
+def doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInParallel, config) {
 
    def volume_name = "${jiraID}-${project.name}-workspace"
    def container_name = "${jiraID}-${project.name}"
@@ -14,7 +20,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInPa
    // Create the right command to run in the container
    if (releaseCMD == "start"){
         echo "Create volume ${volume_name}"
-        sh "sudo docker volume create --name=${volume_name}"
+        sh "${config.DOCKER_CMD} volume create --name=${volume_name}"
         container_command = "release-start ${project.name} ${jiraID}"
    } else if (releaseCMD == "validate"){
        container_command = "release-validate ${jiraID}"
@@ -37,35 +43,44 @@ def doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInPa
    }
 
    stage("Container ${container_name}"){
-        sh "sudo docker run --rm ${container_run_option} -v /${jenkinsAgentRootPath}/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
+       sh "${config.DOCKER_CMD} run --rm ${container_run_option} -v /${jenkinsAgentRootPath}/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
                 -v /${jenkinsAgentRootPath}/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
                 -v /${jenkinsAgentRootPath}/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
                 -v /${jenkinsAgentRootPath}/.ssh/id_rsa:/home/ciagent/.ssh/id_rsa:ro \
                 --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
-                -e exo_user=${exoUser} \
+                --env-file ${config.ENV_FILE_FROM_JENKINS} \
                 -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
+                -e exo_user=${exoUser} \
                 -v ${volume_name}:/opt/exo-release/workspace \
                 -v ${jiraID}-m2_cache:/home/ciagent/.m2/repository \
                 --name ${container_name} \
                 ${docker_image} \
-                \"${container_command}\""
+                '${container_command}'"
     }
 
     //RELMAN-3:
     if (releaseCMD == "cancel"){
         stage("Container ${container_name} (cleanup)"){
-            sh "sudo docker volume rm ${volume_name}"
-            sh "sudo docker volume rm ${jiraID}-m2_cache"
+            sh "${config.DOCKER_CMD} volume rm ${volume_name}"
+            sh "${config.DOCKER_CMD} volume rm ${jiraID}-m2_cache"
         }
     }
     
 }
 
 // Read data from JSON Catalog and executes an action on the specified projects
-def executeActionOnProjects(projects, action) {
+def executeActionOnProjects(projects, config, action) {
 
-    def JSONCatalog = new URL("${CATALOG_BASE_URL}/${JIRA_ID}.json")
-    def catalog = jsonParser(JSONCatalog.newReader())
+    def catalogURL = "${CATALOG_BASE_URL}/${JIRA_ID}.json"
+    echo "Downloading catalog at ${catalogURL}"
+
+    def catalogRequestParameters = [:]
+    if (config.CATALOG_CREDENTIALS) {
+        catalogRequestParameters += createBasicAuthString(config.CATALOG_CREDENTIALS)
+    }
+
+    def JSONCatalog = new URL(catalogURL)
+    def catalog = jsonParser(JSONCatalog.newReader(requestProperties: catalogRequestParameters))
 
     echo "Number of Projects in Catalog: ${catalog.size}"
     // Loop first on projectsToRelease to keep the order
@@ -79,7 +94,7 @@ def executeActionOnProjects(projects, action) {
     }
 }
 
-def validateProjectsToRelease(projects) {
+def validateProjectsToRelease(projects, config) {
   def valid = true
   // Map containing the projects found in the catalog and the number of actions performed
   def releasedProjects = [:]
@@ -88,7 +103,7 @@ def validateProjectsToRelease(projects) {
     releasedProjects[name] = releasedProjects.containsKey(name) ? releasedProjects[name]+1 : 1
   }
   
-  executeActionOnProjects(projects, releasedProjectCounter)
+  executeActionOnProjects(projects, config, releasedProjectCounter)
   
   // check if  all the projects were found on the json
   def unreleasedProjects = projects - releasedProjects.keySet()
@@ -108,6 +123,8 @@ def validateProjectsToRelease(projects) {
 // Execute Release on Jenkins Slave with Docker
 node('docker') {
 
+  def config = [:]
+
   // Init parameters
   stage "Check Release parameters"
   def jiraID = "${JIRA_ID}"
@@ -117,24 +134,65 @@ node('docker') {
   def isInParallel = "${RELEASE_PROJECTS_IN_PARALLEL}"
   def jenkinsAgentRootPath = "${JENKINS_AGENT_ROOT_PATH}"
   def exoUser = "${BUILD_USER_ID}"
+  def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
+
+  // Avoid directory traversing
+  config.ENV_FILE_FROM_JENKINS = "/tmp/${JIRA_ID.replaceAll('/', '-')}.env"
+  config.DOCKER_CMD = env.DOCKER_CMD ?: 'sudo docker'
+
   echo "* Projects: ${PROJECTS}"
   echo "* Projects computed: ${projectsToRelease}"
   echo "* Command: ${RELEASE_CMD}"
   echo "* Projects: ${PROJECTS}"
   echo "* Releases in Parallel? ${isInParallel}"
+  echo "* catalogCredentialsId : ${catalogCredentialsId}"
 
-  stage "${JIRA_ID}-projects_validation"
-  if ( ! validateProjectsToRelease(projectsToRelease) ) {
-    currentBuild.result = "FAIL"
-    return
+  try {
+    stage("${JIRA_ID}-init_docker_environment") {
+        // Write the file on the slave. We can't use groovy because the file needs to be present on the slave
+        // Init file
+        sh "echo > ${config.ENV_FILE_FROM_JENKINS}"
+        sh "chmod 600 ${config.ENV_FILE_FROM_JENKINS}"
+
+        if (catalogCredentialsId) {
+            withCredentials([usernamePassword(credentialsId: catalogCredentialsId, usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
+                config.CATALOG_CREDENTIALS = "${USER}:${PASSWORD}"
+
+                sh "echo CATALOG_CREDENTIALS=${config.CATALOG_CREDENTIALS} >> ${config.ENV_FILE_FROM_JENKINS}"
+            }
+        }
+    }
+
+    stage("${JIRA_ID}-projects_validation") {
+        if ( ! validateProjectsToRelease(projectsToRelease, config) ) {
+            error 'FAIL'
+        }
+    } 
+
+    if ( currentBuild.result == 'FAILURE' ) {
+        error 'FAIL'
+    }
+
+    //Create m2 cache volume for the release
+    stage("${JIRA_ID}-m2_cache") {
+        sh "${config.DOCKER_CMD} volume create --name ${JIRA_ID}-m2_cache"
+    }
+
+    stage("${JIRA_ID}-do_release") {
+        echo "Launching release ..."
+        def releaseAction = { project ->
+          doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInParallel, config)
+        }
+        if (catalogCredentialsId) {
+        withCredentials([usernamePassword(credentialsId: catalogCredentialsId, usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
+            executeActionOnProjects(projectsToRelease, config, releaseAction)
+          }
+        } else {
+           executeActionOnProjects(projectsToRelease, config, releaseAction)
+        }
+    }
+  } finally {
+      echo 'Removing environment file '
+      sh "rm -v ${config.ENV_FILE_FROM_JENKINS}"
   }
-
-  //Create m2 cache volume for the release
-  stage "${JIRA_ID}-m2_cache"
-  sh "sudo docker volume create --name ${JIRA_ID}-m2_cache"
-
-  stage "${JIRA_ID}-do_release"
-  executeActionOnProjects(projectsToRelease, { project ->
-    doRelease(exoUser, jenkinsAgentRootPath, jiraID, project, releaseCMD, isInParallel)
-  })
 }
