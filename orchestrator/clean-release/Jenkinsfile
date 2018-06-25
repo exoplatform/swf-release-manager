@@ -4,6 +4,12 @@ def jsonParser(def json) {
     new groovy.json.JsonSlurperClassic().parse(json)
 }
 
+@NonCPS
+def createBasicAuthString(credentials) {
+    def authString = credentials.getBytes().encodeBase64().toString();
+    [Authorization: "Basic " + authString]
+}
+
 def doClean(jiraID, project, action, isInParallel) {
 
    def volume_name = "${jiraID}-${project.name}-workspace"
@@ -27,10 +33,22 @@ def doClean(jiraID, project, action, isInParallel) {
    sh "sudo docker ${docker_command} ${container_name}"
 }
 
-def doCleans(jiraID, projectsToClean, action, isInParallel) {
+def doCleans(jiraID, projectsToClean, action, isInParallel, catalogCredentialsId) {
 
-   def JSONCatalog = new URL("${CATALOG_BASE_URL}/${JIRA_ID}.json")
-   def catalog = jsonParser(JSONCatalog.newReader())
+    def catalogURL = "${CATALOG_BASE_URL}/${JIRA_ID}.json"
+
+    def catalogRequestParameters = [:]
+    def withCatalogCredentials = false
+    if (catalogCredentialsId) {
+        withCredentials([usernamePassword(credentialsId: catalogCredentialsId, usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
+            catalogRequestParameters += createBasicAuthString("${USER}:${PASSWORD}")
+        }
+        withCatalogCredentials = true
+    }
+    echo "Downloading catalog at ${catalogURL} withCredentials=${withCatalogCredentials}"
+
+    def JSONCatalog = new URL(catalogURL)
+    def catalog = jsonParser(JSONCatalog.newReader(requestProperties: catalogRequestParameters))
 
     echo "Number of Projects in Catalog: ${catalog.size}"
     // Loop first on projectsToClean to keep the order
@@ -58,10 +76,13 @@ node('docker') {
   def p = "${PROJECTS}"
   def projectsToClean = p.split(',')
   def isInParallel = true
+  def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
+
   echo "* Projects: ${PROJECTS}"
   echo "* Command: ${ACTION}"
   echo "* Projects: ${PROJECTS}"
+  echo "* CredentialsId: ${catalogCredentialsId}: "
 
   stage "[START] Clean for ${JIRA_ID}"
-  doCleans(jiraID, projectsToClean, action, isInParallel)
+  doCleans(jiraID, projectsToClean, action, isInParallel, catalogCredentialsId)
 }
