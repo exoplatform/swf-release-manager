@@ -13,7 +13,7 @@ source ${SCRIPTS_DIR}/process/git-release.sh
 source ${SCRIPTS_DIR}/process/nexus-repos.sh
 source ${SCRIPTS_DIR}/process/maven-release.sh
 source ${SCRIPTS_DIR}/process/maven-dependencies.sh
-source ${SCRIPTS_DIR}/notifications/jira.sh
+source ${SCRIPTS_DIR}/notifications/tasks.sh
 
 echo "==============================================================================="
 echo "         ***********       eXo Release Manager      ***********                "
@@ -137,31 +137,31 @@ function exor_release_project {
       maven_dependencies_update_before_release $projectName $issueId
 
       maven_prepare_release $projectName $tagName $releaseVersion $releaseNextSnapshotVersion $issueId $projectName || throw $exProjectBuild
-      # Notification to JIRA issue
-      jira_add_comment $projectName "release_prepare_OK" $issueId
+      # Notification to Tribe Task
+      task_add_comment $projectName "release_prepare_OK" $issueId
 
       # skip tests for release:perform as release:prepare just run them
       maven_perform_release $projectName true $releaseVersion || throw $exProjectBuild
-      # Notification to JIRA issue
-      jira_add_comment $projectName "release_perform_OK" $issueId
+      # Notification to Tribe Task
+      task_add_comment $projectName "release_perform_OK" $issueId
 
       maven_dependencies_update_after_release $projectName $issueId
 
       # Create Nexus Staging Repositry
       description="$issueId:$projectName:$tagName"
       nexus_create_staging_repo $description $nexus_host $nexus_profile || throw $exNexusStaging
-      # Notification to JIRA issue
-      jira_add_comment $projectName "nexus_staging_repo_created_OK" $issueId
+      # Notification to Tribe Task
+      task_add_comment $projectName "nexus_staging_repo_created_OK" $issueId
 
       # Upload Release artifacts
       nexus_deploy_staged_repo $(release_status_get_repo_id) $nexus_host $nexus_profile || throw $exNexusStaging
-      # Notification to JIRA issue
-      jira_add_comment $projectName "nexus_deploy_to_stage_repo_OK" $issueId
+      # Notification to Tribe Task
+      task_add_comment $projectName "nexus_deploy_to_stage_repo_OK" $issueId
 
       # Close Nexus Staging Repository
       nexus_close_staging_repo $projectName $(release_status_get_repo_id) $nexus_host $nexus_profile $description || throw $exNexusStaging
-      # Notification to JIRA issue
-      jira_add_comment $projectName "nexus_staging_repo_closed_OK" $issueId
+      # Notification to Tribe Task
+      task_add_comment $projectName $projectName "nexus_staging_repo_closed_OK" $issueId
   )
   catch || {
     # now you can handle
@@ -170,9 +170,10 @@ function exor_release_project {
     # Update status in error
     release_status_update_step_status $STATUS_ERROR
 
-    # Notification to JIRA issue
+    # Notification to Tribe Task
     msg="ERROR_release_start_$ex_code"
-    jira_add_comment $projectName $msg $issueId
+    # Notification to Tribe Task
+    task_add_comment $projectName $projectName $msg $issueId
 
     case $ex_code in
         $exReleasePrerequisiteKO)
@@ -305,36 +306,36 @@ function exor_release_from_step {
         log $projectName
         description=$projectName":"$tagName
         nexus_create_staging_repo $description $nexus_host $nexus_profile || throw $exNexusStaging
-        # Notification to JIRA issue
-        jira_add_comment $projectName "nexus_staging_repo_created_OK" $issueId
+        # Notification to Tribe Task
+        task_add_comment $projectName "nexus_staging_repo_created_OK" $issueId
         exit;
         ;;
       "nexus:deploy")
         log $projectName
-        nexus_deploy_staged_repo $(release_status_get_repo_id) $nexus_host $nexus_profile || throw $exNexusStaging
-        # Notification to JIRA issue
-        jira_add_comment $projectName "nexus_deploy_to_stage_repo_OK" $issueId
+        nexus_deploy_staged_repo $(release_status_get_repo_id) $nexus_host $nexus_profile || throw $exNexusStaging        
+        # Notification to Tribe Task
+        task_add_comment $projectName $projectName "nexus_deploy_to_stage_repo_OK" $issueId
         exit;
         ;;
       "nexus:close")
        description=$projectName":"$tagName
         nexus_close_staging_repo $projectName $(release_status_get_repo_id) $nexus_host $nexus_profile $description || throw $exNexusStaging
-        # Notification to JIRA issue
-        jira_add_comment $projectName "nexus_staging_repo_closed_OK" $issueId
+        # Notification to Tribe Task
+        task_add_comment $projectName "nexus_staging_repo_closed_OK" $issueId
         exit;
         ;;
       "nexus:drop")
         description=$projectName":"$tagName
         nexus_drop_staging_repo $(release_status_get_repo_id) $nexus_host $nexus_profile $description  || throw $exNexusStaging
-        # Notification to JIRA issue
-        jira_add_comment $projectName "nexus_staging_repo_drop_OK" $issueId
+        # Notification to Tribe Task
+        task_add_comment $projectName "nexus_staging_repo_drop_OK" $issueId
         exit;
         ;;
       "nexus:release")
         description=$projectName":"$tagName
         nexus_release_staging_repo $(release_status_get_repo_id) $nexus_host $nexus_profile $description  || throw $exNexusStaging
-        # Notification to JIRA issue
-        jira_add_comment $projectName "nexus_staging_repo_release_OK" $issueId
+        # Notification to Tribe Task
+        task_add_comment $projectName "nexus_staging_repo_release_OK" $issueId
         exit;
         ;;
       *)
@@ -346,11 +347,12 @@ function exor_release_from_step {
   catch || {
       # now you can handle
       error "[ERROR] Unable to continue the release."
-      # Notification to JIRA issue
+      # Notification to Tribe Task
       msg="ERROR_release_continue_from_$ex_code"
       # Update status in error
       release_status_update_step_status $STATUS_ERROR
-      jira_add_comment $projectName $msg $issueId
+      # Notification to Tribe Task
+      task_add_comment $projectName $projectName $msg $issueId
 
       case $ex_code in
           $exReleasePrerequisiteKO)
@@ -398,7 +400,7 @@ function usage {
   echo "Usage: eXoR [command] [options]"
   echo " --- Catalog commands --- "
   echo "* eXoR list"
-  echo "* eXoR catalog-from-url <JIRA_ID>"
+  echo "* eXoR catalog-from-url <TASK_ID>"
   echo "* eXoR info PROJECT"
   echo " "
   echo " --- Project commands --- "
@@ -406,12 +408,12 @@ function usage {
   echo "* eXoR project-info <PROJECT>"
   echo " "
   echo " --- Release commands --- "
-  echo "* eXoR release-start PROJECT JIRA_ID"
+  echo "* eXoR release-start PROJECT TASK_ID"
   echo "* eXoR release-continue-from STEP "
   echo "** STEP = nexus:create / nexus:deploy / nexus:close / nexus:drop / nexus:release"
-  echo "* eXoR release-validate JIRA_ID"
-  echo "* eXoR release-cancel JIRA_ID"
-  echo "* eXoR release-init-json PROJECT JIRA_ID"
+  echo "* eXoR release-validate TASK_ID"
+  echo "* eXoR release-cancel TASK_ID"
+  echo "* eXoR release-init-json PROJECT TASK_ID"
   echo "==== HELP ===="
 }
 

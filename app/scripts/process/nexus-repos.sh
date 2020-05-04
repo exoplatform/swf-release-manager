@@ -34,7 +34,7 @@ function nexus_all_staging_repos {
 # Create a Nexus Staging Repository with REST API.
 #
 # Params required:
-# $1: JIRA_ID
+# $1: TASK_ID
 # $2: Nexus Host (exoplatform or jboss)
 # $3: Nexus Staging Profile
 function nexus_create_staging_repo {

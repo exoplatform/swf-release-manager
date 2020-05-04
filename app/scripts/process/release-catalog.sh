@@ -9,7 +9,7 @@ set -o pipefail
 
 #
 # Download a JSON file and save it as catalog.json.
-# The JSOn filename is based on the JIRA ID: <JIRA_ID>.json
+# The JSOn filename is based on the TASK ID: <TASK_ID>.json
 #
 function release_catalog_download_from_url() {
 

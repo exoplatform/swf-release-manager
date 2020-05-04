@@ -4,7 +4,7 @@ set -o pipefail
 #
 # Update maven properties which defines maven dependencies versions.
 # $1 project name
-# $2 JIRA_ID
+# $2 TASK_ID
 #
 function maven_dependencies_update_before_release {
    printHeader "Update dependencies BEFORE release for $1"
@@ -48,7 +48,7 @@ function maven_dependencies_update_before_release {
 #
 # Update maven properties which defines maven dependencies versions.
 # $1 project name
-# $2 JIRA_ID
+# $2 TASK_ID
 #
 function maven_dependencies_update_after_release {
    printHeader "Update dependencies AFTER release for $1"

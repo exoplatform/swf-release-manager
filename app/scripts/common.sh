@@ -172,8 +172,8 @@ function displayAvailableProjects {
   else
      log "[ERROR] ${DATAS_DIR}/catalog.json not found."
      log "[HELP] You can do:"
-     log " * eXoR.sh catalog-from-url <JIRA-ID> "
-     log "in order to download the <JIRA-ID>.json file."
+     log " * eXoR.sh catalog-from-url <TASK-ID> "
+     log "in order to download the <TASK-ID>.json file."
   fi
 }
 

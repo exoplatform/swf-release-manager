@@ -153,7 +153,7 @@ As eXo Releases are only executed on *eXoPlatform* GitHub organization, we need 
 * Go to the *eXo Release Multiple Projects* Jenkins job:
 ** https://ci.exoplatform.org/job/exo-release-multiple-projects/
 * Build it with the following parameters:
-** *JIRA_ID*: Select the JIRA issue that you have created for the release
+** *TASK_ID*: Put the TASK_ID that you have created for the release
 ** *CATALOG_BASE_URL*: Keep the default URL or update it if you use anoter location for JSON catalog
 ** *PROJECTS*: fill all the projects you want to release (projects have to be declared in JSON Catalog)
 +
@@ -173,7 +173,7 @@ you can validate the release by release all Nexus repositories:
 * Go to the *eXo Release Multiple Projects* Jenkins job:
 ** https://ci.exoplatform.org/job/exo-release-multiple-projects/
 * Build it with the following parameters:
-** *JIRA_ID*: Select the JIRA issue that you have created for the release
+** *TASK_ID*: Put the TASK_ID that you have created for the release
 ** *CATALOG_BASE_URL*: Keep the default URL or update it if you use anoter location for JSON catalog
 ** *PROJECTS*: fill all the projects you want to validate the release (projects have to be declared in JSON Catalog)
 ** *RELEASE_CMD*: Choose the *validate* command
@@ -228,8 +228,7 @@ Connect to the server *release.exoplatform.org* and inspect the related Docker v
 
 === How to quickly reuse a failed Jenkins Job?
 
-Use the *Rebuild* Jenkins option to have the form pre-filled and update the projects to release if needeed. +
-Be careful, check the *right JIRA_ID* which is not selected by default.
+Use the *Rebuild* Jenkins option to have the form pre-filled and update the projects to release if needeed. 
 
 === How to run/test the eXo Release Manager locally?
 
