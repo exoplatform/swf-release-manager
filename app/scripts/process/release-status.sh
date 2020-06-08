@@ -29,7 +29,7 @@ function release_status_init {
   myIssueId="\"$1\""
   myProjectId="\"$2\""
   # Save the ID in the release.json file
-  saveId=$(json -I -f ${WORKSPACE_DIR}/release.json -e 'this.id='${myIssueId}';  this.jira.issue_id='${myIssueId}'; this.project='${myProjectId}' ' )
+  saveId=$(json -I -f ${WORKSPACE_DIR}/release.json -e 'this.id='${myIssueId}';  this.Task.issue_id='${myIssueId}'; this.project='${myProjectId}' ' )
 
   release_status_write_step $INIT_PARAMS $STATUS_DONE
 }
@@ -46,7 +46,7 @@ function release_status_get_project_id {
 }
 
 function release_status_get_issue_id {
-  id=$(json -f ${WORKSPACE_DIR}/release.json -a jira.issue_id)
+  id=$(json -f ${WORKSPACE_DIR}/release.json -a Task.issue_id)
   echo $id
 }
 
