@@ -25,6 +25,10 @@ function release_catalog_download_from_url() {
 	printHeader "Download catalog from ${CATALOG_BASE_URL}/$1.json withCredential=${withCredentials}"
 	response=$(curl -sS ${params} -H "Content-Type: application/json" -v ${CATALOG_BASE_URL}/$1.json 2>/dev/null)
 
+	if [ "$1" = "continuous-release-template" ]; then
+		response=sed "s|\${release-version}|$(date '+%d%m%Y')|g" <<< $response 
+	fi
+
 	CATALOG=$(echo $response | json -g)
 	echo $CATALOG >$DATAS_DIR/catalog.json
 
