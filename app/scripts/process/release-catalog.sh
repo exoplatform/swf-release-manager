@@ -26,7 +26,7 @@ function release_catalog_download_from_url() {
 	response=$(curl -sS ${params} -H "Content-Type: application/json" -v ${CATALOG_BASE_URL}/$1.json 2>/dev/null)
 
 	if [ "$1" = "continuous-release-template" ]; then
-		response=$(sed "s|\${release-version}|$(date '+%d%m%Y')|g" <<< $response)
+		response=$(sed "s|\${release-version}|$2|g" <<< $response)
 	fi
 
 	CATALOG=$(echo $response | json -g)

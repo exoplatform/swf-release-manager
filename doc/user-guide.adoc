@@ -273,6 +273,6 @@ $ docker run --rm -v ~/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
         -v ~/.m2/repository:/home/ciagent/.m2/repository \
         --name RELEASE-155-maven-sandbox-project \
         exoplatform/release:RELMAN-1 \
-        "release-start maven-sandbox-project RELEASE-155"
+        "release-start maven-sandbox-project RELEASE-155 20210121"
 ----
 +

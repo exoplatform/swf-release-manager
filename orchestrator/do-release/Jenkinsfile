@@ -10,7 +10,7 @@ def createBasicAuthString(credentials) {
     [Authorization: "Basic " + authString]
 }
 
-def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInParallel, config) {
+def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInParallel, config, continuousReleaseSuffix) {
 
    def volume_name = "${taskID}-${project.name}-workspace"
    def container_name = "${taskID}-${project.name}"
@@ -21,13 +21,13 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
    if (releaseCMD == "start"){
         echo "Create volume ${volume_name}"
         sh "${config.DOCKER_CMD} volume create --name=${volume_name}"
-        container_command = "release-start ${project.name} ${taskID}"
+        container_command = "release-start ${project.name} ${taskID} ${continuousReleaseSuffix}"
    } else if (releaseCMD == "validate"){
        container_command = "release-validate ${taskID}"
    } else if (releaseCMD == "cancel"){
        container_command = "release-cancel ${project.name} ${taskID}" 
    } else if (releaseCMD == "catalog-from-url"){
-       container_command = "catalog-from-url ${taskID}"
+       container_command = "catalog-from-url ${taskID} ${continuousReleaseSuffix}"
    } else if (releaseCMD == "release-continue-from nexus:create"){
        container_command = "release-continue-from nexus:create"
    } else if (releaseCMD == "release-continue-from nexus:deploy"){
@@ -135,6 +135,7 @@ node('docker') {
   def jenkinsAgentRootPath = "${JENKINS_AGENT_ROOT_PATH}"
   def exoUser = "${BUILD_USER_ID}"
   def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
+  def continuousReleaseSuffix = "${CONTINUOUS_RELEASE_SUFFIX}"
 
   // Avoid directory traversing
   config.ENV_FILE_FROM_JENKINS = "/tmp/${TASK_ID.replaceAll('/', '-')}.env"
@@ -181,7 +182,7 @@ node('docker') {
     stage("${TASK_ID}-do_release") {
         echo "Launching release ..."
         def releaseAction = { project ->
-          doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInParallel, config)
+          doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInParallel, config, continuousReleaseSuffix)
         }
         if (catalogCredentialsId) {
         withCredentials([usernamePassword(credentialsId: catalogCredentialsId, usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
