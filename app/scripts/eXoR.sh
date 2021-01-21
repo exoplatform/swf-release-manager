@@ -93,11 +93,12 @@ function exor_release_project {
   # Init
   projectName=$2
   issueId=$3
+  versionSuffix=$4
 
   log "[DEBUG]" $issueId
 
   log "Download catalog.json for release..."
-  release_catalog_download_from_url $issueId
+  release_catalog_download_from_url $issueId $versionSuffix
 
   try
   (
@@ -408,7 +409,7 @@ function usage {
   echo "* eXoR project-info <PROJECT>"
   echo " "
   echo " --- Release commands --- "
-  echo "* eXoR release-start PROJECT TASK_ID"
+  echo "* eXoR release-start PROJECT TASK_ID CONTINUOUS_RELEASE_SUFFIX"
   echo "* eXoR release-continue-from STEP "
   echo "** STEP = nexus:create / nexus:deploy / nexus:close / nexus:drop / nexus:release"
   echo "* eXoR release-validate TASK_ID"
@@ -477,7 +478,7 @@ case $1 in
     exit;
     ;;
   "catalog-from-url")
-    release_catalog_download_from_url $2
+    release_catalog_download_from_url $2 $3
     displayAvailableProjects
     exit;
     ;;
