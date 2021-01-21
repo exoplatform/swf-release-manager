@@ -137,6 +137,10 @@ node('docker') {
   def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
   def continuousReleaseSuffix = "${CONTINUOUS_RELEASE_SUFFIX}"
 
+  if ( continuousReleaseSuffix.equals('') ) {
+      continuousReleaseSuffix = "OPTIONAL"
+  }
+
   // Avoid directory traversing
   config.ENV_FILE_FROM_JENKINS = "/tmp/${TASK_ID.replaceAll('/', '-')}.env"
   config.DOCKER_CMD = env.DOCKER_CMD ?: 'sudo docker'
