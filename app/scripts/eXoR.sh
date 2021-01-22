@@ -93,10 +93,7 @@ function exor_release_project {
   # Init
   projectName=$2
   issueId=$3
-  versionSuffix=''
-  set +u
-    [ ! -z "$4" ] && versionSuffix="$4"
-  set -u
+  versionSuffix=${4:-}
 
   log "[DEBUG]" $issueId
 
