@@ -15,6 +15,7 @@ function release_catalog_download_from_url() {
 
 	withCredentials=false
 	params=""
+	versionSuffix=''
 	set +e
 	if [ ! -z "${CATALOG_CREDENTIALS}" ]; then
 		params="-u ${CATALOG_CREDENTIALS}"
@@ -22,11 +23,15 @@ function release_catalog_download_from_url() {
 	fi
 	set -e
 
+	set +u
+    	[ ! -z "$2" ] && versionSuffix="$2"
+    set -u
+
 	printHeader "Download catalog from ${CATALOG_BASE_URL}/$1.json withCredential=${withCredentials}"
 	response=$(curl -sS ${params} -H "Content-Type: application/json" -v ${CATALOG_BASE_URL}/$1.json 2>/dev/null)
 
 	if [ "$1" = "continuous-release-template" ]; then
-		response=$(sed "s|\${release-version}|$2|g" <<< $response)
+		response=$(sed "s|\${release-version}|${versionSuffix}|g" <<< $response)
 	fi
 
 	CATALOG=$(echo $response | json -g)
