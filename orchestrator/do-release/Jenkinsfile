@@ -136,10 +136,7 @@ node('docker') {
   def exoUser = "${BUILD_USER_ID}"
   def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
   def continuousReleaseSuffix = "${CONTINUOUS_RELEASE_SUFFIX}"
-
-  if ( continuousReleaseSuffix.equals('') ) {
-      continuousReleaseSuffix = "OPTIONAL"
-  }
+  
 
   // Avoid directory traversing
   config.ENV_FILE_FROM_JENKINS = "/tmp/${TASK_ID.replaceAll('/', '-')}.env"
