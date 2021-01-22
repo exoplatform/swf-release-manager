@@ -23,10 +23,7 @@ function release_catalog_download_from_url() {
 	fi
 	set -e
 
-	set +u
-    	[ ! -z "$2" ] && versionSuffix="$2"
-    set -u
-
+      versionSuffix=${2:-}
 	printHeader "Download catalog from ${CATALOG_BASE_URL}/$1.json withCredential=${withCredentials}"
 	response=$(curl -sS ${params} -H "Content-Type: application/json" -v ${CATALOG_BASE_URL}/$1.json 2>/dev/null)
 
