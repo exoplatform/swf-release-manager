@@ -15,7 +15,6 @@ function release_catalog_download_from_url() {
 
 	withCredentials=false
 	params=""
-	versionSuffix=''
 	set +e
 	if [ ! -z "${CATALOG_CREDENTIALS}" ]; then
 		params="-u ${CATALOG_CREDENTIALS}"
