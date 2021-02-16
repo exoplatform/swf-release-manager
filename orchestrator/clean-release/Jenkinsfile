@@ -48,9 +48,8 @@ def doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId
     echo "Downloading catalog at ${catalogURL} withCredentials=${withCatalogCredentials}"
 
     def JSONCatalog = new URL(catalogURL)
-    def catalog = jsonParser(JSONCatalog.newReader(requestProperties: catalogRequestParameters))
-
-    echo "Number of Projects in Catalog: ${catalog.size}"
+    def catalog = jsonParser(JSONCatalog.newReader(requestProperties: catalogRequestParameters))    
+    echo "Number of Projects in Catalog: " + catalog.size()
     // Loop first on projectsToClean to keep the order
     for (i = 0; i < projectsToClean.length; i++) {
          def projectName = projectsToClean[i];
@@ -58,7 +57,7 @@ def doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId
          if (projectName.equals('*')){
              cleanAll = true
          }
-         for (j = 0; j < catalog.size; j++) {
+         for (j = 0; j < catalog.size(); j++) {
              if (catalog[j].name == projectName || cleanAll) {
                 doClean(taskID, catalog[j], action, isInParallel)
              }

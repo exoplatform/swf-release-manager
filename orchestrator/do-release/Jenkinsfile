@@ -1,6 +1,6 @@
 #!/usr/bin/groovy
 @NonCPS
-def jsonParser(def json) {
+def jsonParser(def json) {    
     new groovy.json.JsonSlurperClassic().parse(json)
 }
 
@@ -80,13 +80,14 @@ def executeActionOnProjects(projects, config, action) {
     }
 
     def JSONCatalog = new URL(catalogURL)
-    def catalog = jsonParser(JSONCatalog.newReader(requestProperties: catalogRequestParameters))
+    def catalog = jsonParser(JSONCatalog.newReader(requestProperties: catalogRequestParameters))    
+    echo "Number of Projects in Catalog: " + catalog.size()
 
-    echo "Number of Projects in Catalog: ${catalog.size}"
+    
     // Loop first on projectsToRelease to keep the order
     for (i = 0; i < projects.length; i++) {
         def projectName = projects[i];
-        for (j = 0; j < catalog.size; j++) {
+        for (j = 0; j < catalog.size(); j++) {
             if (catalog[j].name == projectName) {
                 action(catalog[j])
             }
