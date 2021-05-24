@@ -200,10 +200,10 @@
     <activeProfile>local-properties</activeProfile>
     <activeProfile>exo-private</activeProfile>
     <activeProfile>exo-staging</activeProfile>
-    <activeProfile>jboss-staging</activeProfile>
+    <!--<activeProfile>jboss-staging</activeProfile>-->
     <!-- Profiles required for JCR and GateIn -->
     <activeProfile>release</activeProfile>
-    <activeProfile>jboss-release</activeProfile>
+    <!--<activeProfile>jboss-release</activeProfile>-->
     <activeProfile>download</activeProfile>
   </activeProfiles>
   <pluginGroups>
