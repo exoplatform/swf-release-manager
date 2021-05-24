@@ -204,7 +204,7 @@
     <!-- Profiles required for JCR and GateIn -->
     <activeProfile>release</activeProfile>
     <!--<activeProfile>jboss-release</activeProfile>-->
-    <activeProfile>download</activeProfile>
+    <!--<activeProfile>download</activeProfile>-->
   </activeProfiles>
   <pluginGroups>
     <pluginGroup>org.exoplatform.maven.plugins</pluginGroup>
