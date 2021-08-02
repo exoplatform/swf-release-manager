@@ -159,10 +159,20 @@ function exor_release_project {
       # Notification to Tribe Task
       task_add_comment $projectName "nexus_deploy_to_stage_repo_OK" $issueId
 
-      # Close Nexus Staging Repository
-      nexus_close_staging_repo $projectName $(release_status_get_repo_id) $nexus_host $nexus_profile $description || throw $exNexusStaging
-      # Notification to Tribe Task
-      task_add_comment $projectName $projectName "nexus_staging_repo_closed_OK" $issueId
+      # Check if the CI/CD is enabled, if yes, close and release staging repository will performed. No need to perform validate action
+      if [ -z "${versionSuffix:-}" ]; then 
+        # Close Nexus Staging Repository
+        nexus_close_staging_repo $projectName $(release_status_get_repo_id) $nexus_host $nexus_profile $description false || throw $exNexusStaging
+        # Notification to Tribe Task
+        task_add_comment $projectName $projectName "nexus_staging_repo_closed_OK" $issueId
+      else 
+        # Close and Release Nexus Staging Repository
+        nexus_close_staging_repo $projectName $(release_status_get_repo_id) $nexus_host $nexus_profile $description true || throw $exNexusStaging
+        # Notification to Tribe Task
+        task_add_comment $projectName $projectName "nexus_staging_repo_closed_OK" $issueId
+        task_add_comment $projectName "nexus_staging_repo_release_OK" $issueId
+        git_release_clean_and_push $projectName $releaseVersion
+      fi
   )
   catch || {
     # now you can handle

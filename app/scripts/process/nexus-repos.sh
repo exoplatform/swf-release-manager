@@ -89,6 +89,7 @@ function nexus_create_staging_repo {
 # $3: Nexus Host (exoplatform or jboss)
 # $4: Nexus Staging Profile
 # $5: description
+# $6: autorelease (true or false)
 function nexus_close_staging_repo {
   printHeader "Close Nexus Repository (Repo ID: $2)"
   log "Closing Repo ID: $2"
@@ -111,7 +112,7 @@ function nexus_close_staging_repo {
   fi
   ######################  NEXUS JBOSS TESTS #####################
 
-  mvnCommand $1 nexus-staging:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
+  mvnCommand $1 nexus-staging:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 -DautoReleaseAfterClose=${6:-false} 2>&1 | tee -a ${LOGS_DIR}/infos.log
   printFooter "Close Nexus Repository (Repo ID: $2)"
   # log status
   release_status_write_step $NEXUS_CLOSE_STAGING_REPO $STATUS_DONE
