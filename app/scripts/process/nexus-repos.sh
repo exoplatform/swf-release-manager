@@ -27,7 +27,7 @@ function nexus_all_staging_repos {
   STAGING_SERVER_URL=$NEXUS_REPO_URL"/service/local/staging"
 
   log "============ Display all eXo Staging Repositories ================"
-  mvnCommand $1 nexus-staging:1.6.8:rc-list -DserverId=$STAGING_SERVER_ID -DnexusUrl=$STAGING_SERVER_URL
+  mvnCommand $1 org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:rc-list -DserverId=$STAGING_SERVER_ID -DnexusUrl=$STAGING_SERVER_URL
 }
 
 
@@ -112,9 +112,9 @@ function nexus_close_staging_repo {
   fi
   ######################  NEXUS JBOSS TESTS #####################
   if [ ${6:-false} = "true" ]; then
-    mvnCommand $1 nexus-staging:1.6.8:rc-close nexus-staging:1.6.8:rc-release -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
+    mvnCommand $1 org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:rc-close org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:rc-release -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
   else
-    mvnCommand $1 nexus-staging:1.6.8:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
+    mvnCommand $1 org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
   fi
   printFooter "Close Nexus Repository (Repo ID: $2)"
   # log status
@@ -150,7 +150,7 @@ function nexus_drop_staging_repo {
   fi
   ######################  NEXUS JBOSS TESTS #####################
 
-  mvn nexus-staging:1.6.8:rc-drop -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$1 -DstagingDescription=$4 2>&1 | tee -a ${LOGS_DIR}/infos.log
+  mvn org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:rc-drop -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$1 -DstagingDescription=$4 2>&1 | tee -a ${LOGS_DIR}/infos.log
   if [ "$?" -ne "0" ]; then
     error "!!! Sorry, maven failed to close Drop Repository (Repo ID: $1). Process aborted. !!!"
     exit 1
@@ -192,7 +192,7 @@ function nexus_deploy_staged_repo {
   ##DEBUG
   log "[NEXUS]" $nexus_url " - " $maven_server_id " - " $NEXUS_STAGING_PROFILE_ID "-" $maven_profile
 
-  mvn nexus-staging:1.6.8:deploy-staged-repository -DnexusUrl=$nexus_url -DserverId=$maven_server_id -DrepositoryDirectory=${LOCAL_STAGING_DIR} -DstagingProfileId=$NEXUS_STAGING_PROFILE_ID -DstagingRepositoryId=$1 -Pexo-release,$maven_profile 2>&1 | tee -a ${LOGS_DIR}/infos.log
+  mvn org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy-staged-repository -DnexusUrl=$nexus_url -DserverId=$maven_server_id -DrepositoryDirectory=${LOCAL_STAGING_DIR} -DstagingProfileId=$NEXUS_STAGING_PROFILE_ID -DstagingRepositoryId=$1 -Pexo-release,$maven_profile 2>&1 | tee -a ${LOGS_DIR}/infos.log
   if [ "$?" -ne "0" ]; then
     error "!!! Sorry, maven failed to deploy Nexus Repository (Repo ID: $1). Process aborted. !!!"
     exit 1
@@ -225,7 +225,7 @@ function nexus_release_staging_repo {
   fi
   ######################  NEXUS JBOSS TESTS #####################
 
-  mvn nexus-staging:1.6.8:rc-release -DnexusUrl=$nexus_url -DserverId=$maven_server_id  -DstagingRepositoryId=$1 -DstagingDescription=$4 2>&1 | tee -a ${LOGS_DIR}/infos.log
+  mvn org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:rc-release -DnexusUrl=$nexus_url -DserverId=$maven_server_id  -DstagingRepositoryId=$1 -DstagingDescription=$4 2>&1 | tee -a ${LOGS_DIR}/infos.log
   if [ "$?" -ne "0" ]; then
     error "!!! Sorry, maven failed to close Nexus Repository (Repo ID: $2). Process aborted. !!!"
     exit 1
