@@ -30,7 +30,7 @@ def doClean(taskID, project, action, isInParallel) {
    }
 
    stage "[CLEAN] project ${project.name} for ${taskID}"
-   sh "sudo docker ${docker_command} ${container_name}"
+   sh "docker ${docker_command} ${container_name}"
 }
 
 def doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId) {

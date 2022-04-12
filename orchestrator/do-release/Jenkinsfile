@@ -141,7 +141,7 @@ node('docker') {
 
   // Avoid directory traversing
   config.ENV_FILE_FROM_JENKINS = "/tmp/${TASK_ID.replaceAll('/', '-')}.env"
-  config.DOCKER_CMD = env.DOCKER_CMD ?: 'sudo docker'
+  config.DOCKER_CMD = env.DOCKER_CMD ?: 'docker'
 
   echo "* Projects: ${PROJECTS}"
   echo "* Projects computed: ${projectsToRelease}"
