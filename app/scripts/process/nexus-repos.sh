@@ -116,6 +116,14 @@ function nexus_close_staging_repo {
   else
     mvnCommand $1 org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
   fi
+  if [ "$?" -ne "0" ]; then
+    if [ ${6:-false} = "true" ]; then
+      error "!!! Sorry, maven failed to autorelease Nexus Repository (Repo ID: $2). Process aborted. !!!"
+    else
+      error "!!! Sorry, maven failed to close Nexus Repository (Repo ID: $2). Process aborted. !!!"
+    fi
+    exit 1
+  fi
   printFooter "Close Nexus Repository (Repo ID: $2)"
   # log status
   release_status_write_step $NEXUS_CLOSE_STAGING_REPO $STATUS_DONE
@@ -227,7 +235,7 @@ function nexus_release_staging_repo {
 
   mvn org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:rc-release -DnexusUrl=$nexus_url -DserverId=$maven_server_id  -DstagingRepositoryId=$1 -DstagingDescription=$4 2>&1 | tee -a ${LOGS_DIR}/infos.log
   if [ "$?" -ne "0" ]; then
-    error "!!! Sorry, maven failed to close Nexus Repository (Repo ID: $2). Process aborted. !!!"
+    error "!!! Sorry, maven failed to release Nexus Repository (Repo ID: $2). Process aborted. !!!"
     exit 1
   fi
   printFooter "Release Nexus Repository  (Repo ID: $1)"
