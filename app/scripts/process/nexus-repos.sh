@@ -112,7 +112,7 @@ function nexus_close_staging_repo {
   fi
   ######################  NEXUS JBOSS TESTS #####################
   if [ ${6:-false} = "true" ]; then
-    mvnCommand $1 nexus-staging:rc-close nexus-staging:rc-release -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
+    mvnCommand $1 nexus-staging:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 -DautoReleaseAfterClose=true 2>&1 | tee -a ${LOGS_DIR}/infos.log
   else
     mvnCommand $1 nexus-staging:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
   fi
