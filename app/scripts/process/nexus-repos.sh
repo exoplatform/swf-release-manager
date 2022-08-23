@@ -112,9 +112,9 @@ function nexus_close_staging_repo {
   fi
   ######################  NEXUS JBOSS TESTS #####################
   if [ ${6:-false} = "true" ]; then
-    mvnCommand $1 nexus-staging:rc-close nexus-staging:rc-release -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
+    mvnCommand $1 nexus-staging:rc-close nexus-staging:rc-release -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 -DstagingProgressTimeoutMinutes=10 2>&1 | tee -a ${LOGS_DIR}/infos.log
   else
-    mvnCommand $1 nexus-staging:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 2>&1 | tee -a ${LOGS_DIR}/infos.log
+    mvnCommand $1 nexus-staging:rc-close -DserverId=$maven_server_id -DnexusUrl=$nexus_url -DstagingRepositoryId=$2 -DstagingDescription=$5 -DstagingProgressTimeoutMinutes=10 2>&1 | tee -a ${LOGS_DIR}/infos.log
   fi
   if [ "$?" -ne "0" ]; then
     if [ ${6:-false} = "true" ]; then
@@ -233,7 +233,7 @@ function nexus_release_staging_repo {
   fi
   ######################  NEXUS JBOSS TESTS #####################
 
-  mvn nexus-staging:rc-release -DnexusUrl=$nexus_url -DserverId=$maven_server_id  -DstagingRepositoryId=$1 -DstagingDescription=$4 2>&1 | tee -a ${LOGS_DIR}/infos.log
+  mvn nexus-staging:rc-release -DnexusUrl=$nexus_url -DserverId=$maven_server_id  -DstagingRepositoryId=$1 -DstagingDescription=$4 -DstagingProgressTimeoutMinutes=10 2>&1 | tee -a ${LOGS_DIR}/infos.log
   if [ "$?" -ne "0" ]; then
     error "!!! Sorry, maven failed to release Nexus Repository (Repo ID: $2). Process aborted. !!!"
     exit 1
