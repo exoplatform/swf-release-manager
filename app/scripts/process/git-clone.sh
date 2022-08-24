@@ -69,12 +69,7 @@ function git_clone {
   log "Cloning $1 from $GIT_HOST $2 for Release Version $4 on Branch $3"
   log "==========================================================="
   release_status_write_step $GIT_CLONE $STATUS_IN_PROGESS
-  gitCommand $1 clone git@$GIT_HOST:$2/$1.git
-  # check if default branch is same as branch to checkout
-  if [ $(gitCommandIsDefaultBranchEqualsCOBranch $1 $3) = "false" ]; then
-     log "Git checkout the right branch"
-     gitCommand $1 checkout -b $3 remotes/origin/$3
-  fi
+  gitCommand $1 clone --depth 1 --branch $3 git@$GIT_HOST:$2/$1.git
 
   release_status_write_step $GIT_CLONE $STATUS_DONE
 }

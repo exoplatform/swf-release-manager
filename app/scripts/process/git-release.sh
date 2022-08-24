@@ -18,5 +18,5 @@ function git_release_clean_and_push {
    # then push 1 commit on base branch
    log "Push only the tag to the remote repo"
    git_release_delete_branch $1 $2
-   gitCommand $1 push --tags
+   gitCommand $1 push origin $2
 }
