@@ -14,7 +14,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
 
    def volume_name = "${taskID}-${project.name}-workspace"
    def container_name = "${taskID}-${project.name}"
-   def container_run_option = ""
+   def container_run_option = "--dns=8.8.8.8 --dns=8.8.8.4"
    def docker_image = "${project.container.image}"
 
    // Create the right command to run in the container
@@ -39,7 +39,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
    }
 
    if (isInParallel == "true"){
-       container_run_option = "-d"
+       container_run_option = "${container_run_option} -d"
    }
 
    stage("Container ${container_name}"){
