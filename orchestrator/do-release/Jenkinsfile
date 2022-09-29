@@ -50,7 +50,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
                 --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
                 --env-file ${config.ENV_FILE_FROM_JENKINS} \
                 -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
-                -e MAVEN_OPTS=${MAVEN_OPTS:-} \
+                -e MAVEN_OPTS=${MAVEN_OPTS} \
                 -e exo_user=${exoUser} \
                 -v ${volume_name}:/opt/exo-release/workspace \
                 -v ${taskID}-m2_cache:/home/ciagent/.m2/repository \
