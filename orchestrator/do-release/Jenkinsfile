@@ -16,6 +16,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
    def container_name = "${taskID}-${project.name}"
    def container_run_option = "--dns=8.8.8.8 --dns=8.8.8.4"
    def docker_image = "${project.container.image}"
+   def MAVEN_OPTS = "${config.MAVEN_OPTS}"
 
    // Create the right command to run in the container
    if (releaseCMD == "start"){
@@ -143,6 +144,7 @@ node('docker') {
   // Avoid directory traversing
   config.ENV_FILE_FROM_JENKINS = "/tmp/${TASK_ID.replaceAll('/', '-')}.env"
   config.DOCKER_CMD = env.DOCKER_CMD ?: 'sudo docker'
+  config.MAVEN_OPTS = MAVEN_OPTS ?: ''
 
   echo "* Projects: ${PROJECTS}"
   echo "* Projects computed: ${projectsToRelease}"
