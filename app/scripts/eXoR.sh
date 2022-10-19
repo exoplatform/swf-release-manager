@@ -95,6 +95,11 @@ function exor_release_project {
   issueId=$3
   versionSuffix=${4:-}
 
+  if [ ! -z "${versionSuffix}" ] && [[ ! "${versionSuffix}" =~ ^[0-9]{8}([0-9][0-9])?$ ]]; then 
+    error "Invalid CONTINUOUS_RELEASE_SUFFIX parameter: ${versionSuffix}! Should be numeric with length 8 or 10 (eg 20221020 or 2022102001) or leave it blank!"
+    throw $exReleasePrerequisiteKO
+  fi
+
   log "[DEBUG]" $issueId
 
   log "Download catalog.json for release..."
