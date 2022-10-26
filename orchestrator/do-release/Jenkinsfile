@@ -17,6 +17,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
    def container_run_option = "--dns=8.8.8.8 --dns=8.8.8.4"
    def docker_image = "${project.container.image}"
    def MAVEN_OPTS = "${config.MAVEN_OPTS}"
+   def BUILD_TIMEOUT = config.BUILD_TIMEOUT
 
    // Create the right command to run in the container
    if (releaseCMD == "start"){
@@ -44,20 +45,30 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
    }
 
    stage("Container ${container_name}"){
-       sh "${config.DOCKER_CMD} run --rm ${container_run_option} -v /${jenkinsAgentRootPath}/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
-                -v /${jenkinsAgentRootPath}/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
-                -v /${jenkinsAgentRootPath}/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
-                -v /${jenkinsAgentRootPath}/.ssh/id_rsa:/home/ciagent/.ssh/id_rsa:ro \
-                --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
-                --env-file ${config.ENV_FILE_FROM_JENKINS} \
-                -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
-                -e MAVEN_OPTS=${MAVEN_OPTS} \
-                -e exo_user=${exoUser} \
-                -v ${volume_name}:/opt/exo-release/workspace \
-                -v ${taskID}-m2_cache:/home/ciagent/.m2/repository \
-                --name ${container_name} \
-                ${docker_image} \
-                '${container_command}'"
+        try {
+            timeout(BUILD_TIMEOUT) {
+                sh "${config.DOCKER_CMD} run --rm ${container_run_option} -v /${jenkinsAgentRootPath}/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
+                    -v /${jenkinsAgentRootPath}/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
+                    -v /${jenkinsAgentRootPath}/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
+                    -v /${jenkinsAgentRootPath}/.ssh/id_rsa:/home/ciagent/.ssh/id_rsa:ro \
+                    --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
+                    --env-file ${config.ENV_FILE_FROM_JENKINS} \
+                    -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
+                    -e MAVEN_OPTS=${MAVEN_OPTS} \
+                    -e exo_user=${exoUser} \
+                    -v ${volume_name}:/opt/exo-release/workspace \
+                    -v ${taskID}-m2_cache:/home/ciagent/.m2/repository \
+                    --name ${container_name} \
+                    ${docker_image} \
+                    '${container_command}'"
+            }
+        } catch (error) {
+            echo "Failed to release ${project.name}!"
+            throw error
+        } finally {
+            // Delete container if still running
+            sh "docker rm -f ${container_name} 2>/dev/null || true"
+        }
     }
 
     //RELMAN-3:
@@ -145,6 +156,7 @@ node('docker') {
   config.ENV_FILE_FROM_JENKINS = "/tmp/${TASK_ID.replaceAll('/', '-')}.env"
   config.DOCKER_CMD = env.DOCKER_CMD ?: 'sudo docker'
   config.MAVEN_OPTS = MAVEN_OPTS ?: ''
+  config.BUILD_TIMEOUT = BUILD_TIMEOUT ?: 120 // 2 hours for each module
 
   echo "* Projects: ${PROJECTS}"
   echo "* Projects computed: ${projectsToRelease}"
