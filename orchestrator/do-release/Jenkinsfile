@@ -67,7 +67,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
             throw error
         } finally {
             // Delete container if still running
-            sh "docker rm -f ${container_name} || true"
+            sh "docker rm -f ${container_name} 2>/dev/null || true"
         }
     }
 
