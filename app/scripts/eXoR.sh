@@ -100,7 +100,7 @@ function exor_release_project {
     throw $exReleasePrerequisiteKO
   fi
 
-  if [[ ! "${issueId}" =~ ^([0-9]+|continuous-release(-[a-z]+)?)$ ]]; then 
+  if [[ ! "${issueId}" =~ ^([0-9]+|continuous-release-template(-[a-z]+)?)$ ]]; then 
     error "Invalid TASK_ID parameter: ${issueId}! Should be numeric or refer to a continuous release catalog!"
     throw $exReleasePrerequisiteKO
   fi
