@@ -174,12 +174,12 @@ function exor_release_project {
         # Close Nexus Staging Repository
         nexus_close_staging_repo $projectName $(release_status_get_repo_id) $nexus_host $nexus_profile $description false || throw $exNexusStaging
         # Notification to Tribe Task
-        task_add_comment $projectName $projectName "nexus_staging_repo_closed_OK" $issueId
+        task_add_comment $projectName "nexus_staging_repo_closed_OK" $issueId
       else 
         # Close and Release Nexus Staging Repository
         nexus_close_staging_repo $projectName $(release_status_get_repo_id) $nexus_host $nexus_profile $description true || throw $exNexusStaging
         # Notification to Tribe Task
-        task_add_comment $projectName $projectName "nexus_staging_repo_closed_OK" $issueId
+        task_add_comment $projectName "nexus_staging_repo_closed_OK" $issueId
         task_add_comment $projectName "nexus_staging_repo_release_OK" $issueId
         git_release_clean_and_push $projectName $releaseVersion
       fi
@@ -194,7 +194,7 @@ function exor_release_project {
     # Notification to Tribe Task
     msg="ERROR_release_start_$ex_code"
     # Notification to Tribe Task
-    task_add_comment $projectName $projectName $msg $issueId
+    task_add_comment $projectName "$msg" $issueId
 
     case $ex_code in
         $exReleasePrerequisiteKO)
@@ -335,7 +335,7 @@ function exor_release_from_step {
         log $projectName
         nexus_deploy_staged_repo $(release_status_get_repo_id) $nexus_host $nexus_profile || throw $exNexusStaging        
         # Notification to Tribe Task
-        task_add_comment $projectName $projectName "nexus_deploy_to_stage_repo_OK" $issueId
+        task_add_comment $projectName "nexus_deploy_to_stage_repo_OK" $issueId
         exit;
         ;;
       "nexus:close")
@@ -373,7 +373,7 @@ function exor_release_from_step {
       # Update status in error
       release_status_update_step_status $STATUS_ERROR
       # Notification to Tribe Task
-      task_add_comment $projectName $projectName $msg $issueId
+      task_add_comment $projectName "$msg" $issueId
 
       case $ex_code in
           $exReleasePrerequisiteKO)
