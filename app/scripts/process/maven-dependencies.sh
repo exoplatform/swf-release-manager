@@ -91,9 +91,9 @@ function maven_dependencies_update_after_release {
 function utils_update_file {
 
   if [ $# -eq 3 ]; then
-  	find . -name "$3" -type f -exec sed -i "s${SEP}$1${SEP}$2${SEP}g" {} \;
+    grep -RiIl "$1" --include="$3" . | xargs sed -i "s${SEP}$1${SEP}$2${SEP}g"
   else
-  	find "$4" -name "$3" -type f -exec sed -i "s${SEP}$1${SEP}$2${SEP}g" {} \;
+    grep -RiIl "$1" --include="$3" "$4" | xargs sed -i "s${SEP}$1${SEP}$2${SEP}g" 
   fi
 }
 
