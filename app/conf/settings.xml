@@ -83,6 +83,12 @@
       <mirrorOf>external:*,!exo.private,!exo.staging,!jboss.staging</mirrorOf>
       <url>http://repository.exoplatform.org/public</url>
     </mirror>
+    <mirror>
+      <id>maven-default-http-blocker</id>
+      <mirrorOf>dummy</mirrorOf>
+      <name>Dummy mirror to override default blocking mirror that blocks http</name>
+      <url>http://0.0.0.0/</url>
+    </mirror>
   </mirrors>
   <profiles>
     <!-- This profile is always activated and let you define properties for
