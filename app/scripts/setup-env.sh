@@ -49,6 +49,12 @@ installFile $CONFIG_DIR/gitconfig $HOME/.gitconfig
 replaceInFile $HOME/.gitconfig @@GITHUB_LOGIN@@          $github_login
 replaceInFile $HOME/.gitconfig @@GITHUB_FULLNAME@@       $github_fullname
 replaceInFile $HOME/.gitconfig @@GITHUB_EMAIL@@          $github_email
+replaceInFile $HOME/.gitconfig @@GITHUB_SIGNING_KEY@@    $gpg_keyname
+replaceInFile $HOME/.gitconfig @@GPG_PROGRAM@@ $HOME/gpg-no-tty.sh 
+installFile $CONFIG_DIR/gpg-no-tty.sh $HOME/gpg-no-tty.sh 
+replaceInFile $HOME/gpg-no-tty.sh @@GPG_KEY_PASSPHRASE@@  $(decompress $gpg_passphrase)
+chmod +x $HOME/gpg-no-tty.sh 
+
 installFile $CONFIG_DIR/gitignore $HOME/.gitignore
 git config --global core.excludesfile $HOME/.gitignore
 

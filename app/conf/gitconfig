@@ -1,9 +1,15 @@
 [user]
 	name = @@GITHUB_FULLNAME@@
 	email = @@GITHUB_EMAIL@@
-
+        signingKey = @@GITHUB_SIGNING_KEY@@
 [github]
 	user = @@GITHUB_LOGIN@@
+
+[commit]
+	gpgsign = true
+
+[gpg]
+        program = @@GPG_PROGRAM@@
 
 [core]
   editor = "/usr/bin/vim.tiny"
