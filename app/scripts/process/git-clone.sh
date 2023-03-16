@@ -70,7 +70,7 @@ function git_clone {
   log "==========================================================="
   release_status_write_step $GIT_CLONE $STATUS_IN_PROGESS
   gitCommand $1 clone --depth 1 --branch $3 git@$GIT_HOST:$2/$1.git
-  if [ "${$1:-}" = "platform-private-distributions" ] && [ ! -f ~/.tmpgitignore ]; then 
+  if [ "${1:-}" = "platform-private-distributions" ] && [ ! -f ~/.tmpgitignore ]; then 
     echo "Repository with LFS detected. Initializing..."
     gitCommand $1 lfs install 
     gitCommand $1 lfs track $(gitCommand $1 lfs ls-files | awk -F. '{ ext="*."$NF; print ext}' | uniq | xargs -r)
