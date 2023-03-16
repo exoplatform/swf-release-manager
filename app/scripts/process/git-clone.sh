@@ -70,6 +70,13 @@ function git_clone {
   log "==========================================================="
   release_status_write_step $GIT_CLONE $STATUS_IN_PROGESS
   gitCommand $1 clone --depth 1 --branch $3 git@$GIT_HOST:$2/$1.git
-
+  if [ ! -z "$(find $PRJ_DIR/$1 -name .gitattributes)" ]; then 
+    echo "Repository with LFS detected. Initializing..."
+    gitCommand $1 lfs install 
+    gitCommand $1 lfs track *.zip
+    gitCommand $1 fetch --depth=1 origin $3
+    gitCommand $1 reset --hard origin/$3
+    echo "LFS initialization done."
+  fi
   release_status_write_step $GIT_CLONE $STATUS_DONE
 }
