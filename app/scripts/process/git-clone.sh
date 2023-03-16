@@ -74,7 +74,6 @@ function git_clone {
     echo "Repository with LFS detected. Initializing..."
     gitCommand $1 lfs install 
     gitCommand $1 lfs track *.zip
-    gitCommand $1 fetch --depth=1 origin $3
     gitCommand $1 reset --hard origin/$3
     echo "LFS initialization done."
   fi
