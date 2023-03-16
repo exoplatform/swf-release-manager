@@ -70,6 +70,16 @@ function git_clone {
   log "==========================================================="
   release_status_write_step $GIT_CLONE $STATUS_IN_PROGESS
   gitCommand $1 clone --depth 1 --branch $3 git@$GIT_HOST:$2/$1.git
-
+  if [ ! -z "$(gitCommand $1 lfs ls-files)" ]; then 
+    echo "Repository with LFS detected. Initializing..."
+    gitCommand $1 lfs install 
+    gitCommand $1 lfs track *.zip
+    gitCommand $1 reset --hard origin/$3
+    # Hack: to prevent committing .gitattributes with Release process
+    echo .gitattributes > ~/.tmpgitignore 
+    gitCommand $1 config core.excludesfile ~/.tmpgitignore
+    # End of Hack
+    echo "LFS initialization done."
+  fi
   release_status_write_step $GIT_CLONE $STATUS_DONE
 }
