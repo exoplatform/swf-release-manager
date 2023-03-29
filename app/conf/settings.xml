@@ -81,7 +81,7 @@
     <mirror>
       <id>exo-central-server</id>
       <mirrorOf>external:*,!exo.private,!exo.staging,!jboss.staging</mirrorOf>
-      <url>http://repository.exoplatform.org/public</url>
+      <url>https://repository.exoplatform.org/public</url>
     </mirror>
     <mirror>
       <id>maven-default-http-blocker</id>
@@ -120,7 +120,7 @@
       <repositories>
         <repository>
           <id>exo.private</id>
-          <url>http://repository.exoplatform.org/private</url>
+          <url>https://repository.exoplatform.org/private</url>
           <releases>
             <enabled>true</enabled>
           </releases>
@@ -132,7 +132,7 @@
       <pluginRepositories>
         <pluginRepository>
           <id>exo.private</id>
-          <url>http://repository.exoplatform.org/private</url>
+          <url>https://repository.exoplatform.org/private</url>
           <releases>
             <enabled>true</enabled>
           </releases>
@@ -147,13 +147,13 @@
       <repositories>
         <repository>
           <id>exo.staging</id>
-          <url>http://repository.exoplatform.org/staging</url>
+          <url>https://repository.exoplatform.org/staging</url>
         </repository>
       </repositories>
       <pluginRepositories>
         <pluginRepository>
           <id>exo.staging</id>
-          <url>http://repository.exoplatform.org/staging</url>
+          <url>https://repository.exoplatform.org/staging</url>
         </pluginRepository>
       </pluginRepositories>
     </profile>
