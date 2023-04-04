@@ -14,7 +14,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
 
    def volume_name = "${taskID}-${project.name}-workspace"
    def container_name = "${taskID}-${project.name}"
-   def container_run_option = "--dns=8.8.8.8 --dns=8.8.8.4"
+   def container_run_option = "--dns=8.8.8.8 --dns=8.8.8.4 --sysctl net.ipv6.conf.all.disable_ipv6=1"
    def docker_image = "${project.container.image}"
    def MAVEN_EXTRA_OPTS = "${config.MAVEN_EXTRA_OPTS}"
    def BUILD_TIMEOUT = config.BUILD_TIMEOUT
