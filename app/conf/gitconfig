@@ -8,6 +8,9 @@
 [commit]
 	gpgsign = true
 
+[tag]
+	gpgsign = true
+
 [gpg]
         program = @@GPG_PROGRAM@@
 
