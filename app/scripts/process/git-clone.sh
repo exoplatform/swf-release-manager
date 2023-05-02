@@ -7,7 +7,7 @@ function git_clone_all {
   echo "Clone all projects defined into the catalog"
   echo "==============================================================================="
   ARR=( $(json -f ${DATAS_DIR}/catalog.json -M -a name git_organization release.version release.branch -d,) )
-
+  ARR=($(jq --raw-output '.[] | [.name .git_organization, .release.version, .release.branch] | join(",")' ${DATAS_DIR}/catalog.json))
   if [  -z ${ARR+x}  ]; then
     error "No projects!"
   else
