@@ -6,8 +6,7 @@ function git_clone_all {
   echo "==============================================================================="
   echo "Clone all projects defined into the catalog"
   echo "==============================================================================="
-  ARR=( $(json -f ${DATAS_DIR}/catalog.json -M -a name git_organization release.version release.branch -d,) )
-  ARR=($(jq --raw-output '.[] | [.name .git_organization, .release.version, .release.branch] | join(",")' ${DATAS_DIR}/catalog.json))
+  ARR=($(jq --raw-output '.[] | [.name, .git_organization, .release.version, .release.branch] | join(",")' ${DATAS_DIR}/catalog.json))
   if [  -z ${ARR+x}  ]; then
     error "No projects!"
   else
@@ -25,7 +24,7 @@ function git_clone_all {
 
 function git_clone_all_with_label {
   request="\"$1\""
-  ARR=( $(json -f ${DATAS_DIR}/catalog.json -M -c 'this.labels.indexOf('${request}')>-1' -a name git_organization release.version release.branch -d,) )
+  ARR=($(jq --raw-output '.[] | select(.labels | contains("'${request}'")) | [.name, .git_organization, .release.version, .release.branch] | join(",")' ${DATAS_DIR}/catalog.json))
 
   if [  -z ${ARR+x}  ]; then
     error "No projects with label: " $1
@@ -46,7 +45,7 @@ function git_clone_all_with_label {
 # Clone 1 project via its github name
 function git_clone_single {
   request="\"$1\""
-  ARR=( $(json -f ${DATAS_DIR}/catalog.json -M -c 'this.name == '${request}' ' -a name git_organization release.version release.branch) )
+  ARR=($(jq --raw-output '.[] | select(.name | contains("'${request}'")) | [.name, .git_organization, .release.version, .release.branch] | join(" ")' ${DATAS_DIR}/catalog.json))
   if [  -z ${ARR+x}  ]; then
     echo "No projects with name: " $1
   else
