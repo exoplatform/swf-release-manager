@@ -66,7 +66,7 @@ function nexus_create_staging_repo {
   userAgent=$(getUserAgent)
   response=$(curl -sS -H "Content-Type: application/json" -H "User-Agent: $userAgent" -v -X POST -d @${DATAS_DIR}/api/nexus-staging.json -u $user:$pwd $STAGING_SERVER_URL/profiles/$NEXUS_STAGING_PROFILE_ID/start 2>/dev/null)
   # Extraire ID from JSON response
-  id=$(echo $response | json data.stagedRepositoryId)
+  id=$(echo $response | jq --raw-output '.data.stagedRepositoryId')
 
   if [  -z ${id+x}  ]; then
     error "[ERROR] Nexus Staging Repository not created."
