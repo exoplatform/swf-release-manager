@@ -159,7 +159,7 @@ export exNexusStaging=300
 function displayAvailableProjects {
   log " ====== AVAILABLE PROJECTS ============"
   if [ -f ${DATAS_DIR}/catalog.json ]; then
-    ARR=($(jq --raw-output '.[] | [.name, .release.version, .labels, .release.branch] | join(":")' ${DATAS_DIR}/catalog.json))
+    ARR=($(jq -r '.[] | [.name, .release.version, .labels, .release.branch] | join(":")' ${DATAS_DIR}/catalog.json))
     if [  -z ${ARR+x}  ]; then
       error "No projects available"
     else
@@ -184,7 +184,7 @@ function getProjectByNameFromCatalog {
   local result=''
   # Look for the projectName into the catalog
   projectName="\"$1\""
-  ARR=($(jq --raw-output '.[] | select(.name == '"$projectName"') | [.name, .git_organization, .release.version, .release.branch, .release.next_snapshot_version, .release.nexus_host, .release.nexus_staging_profile] | join(":")' ${DATAS_DIR}/catalog.json))
+  ARR=($(jq -r '.[] | select(.name == '"$projectName"') | [.name, .git_organization, .release.version, .release.branch, .release.next_snapshot_version, .release.nexus_host, .release.nexus_staging_profile] | join(":")' ${DATAS_DIR}/catalog.json))
 
   if [  -z ${ARR+x}  ]; then
     # "No projects with name: " $1

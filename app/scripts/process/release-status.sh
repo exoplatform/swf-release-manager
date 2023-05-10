@@ -29,7 +29,7 @@ function release_status_init {
   myIssueId="\"$1\""
   myProjectId="\"$2\""
   # Save the ID in the release.json file
-  saveId=$(jq --raw-output '.id='"${myIssueId}"' | .Task.issue_id='"${myIssueId}"' | .project='"${myProjectId}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
+  saveId=$(jq -r '.id='"${myIssueId}"' | .Task.issue_id='"${myIssueId}"' | .project='"${myProjectId}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
 
   release_status_write_step $INIT_PARAMS $STATUS_DONE
 }
@@ -41,17 +41,17 @@ function release_status_has_id {
 }
 
 function release_status_get_project_id {
-  id=$(jq --raw-output '.project' ${WORKSPACE_DIR}/release.json)
+  id=$(jq -r '.project' ${WORKSPACE_DIR}/release.json)
   echo $id
 }
 
 function release_status_get_issue_id {
-  id=$(jq --raw-output '.Task.issue_id' ${WORKSPACE_DIR}/release.json)
+  id=$(jq -r '.Task.issue_id' ${WORKSPACE_DIR}/release.json)
   echo $id
 }
 
 function release_status_get_repo_id {
-  id=$(jq --raw-output '.nexus.staged_repository_id' ${WORKSPACE_DIR}/release.json)
+  id=$(jq -r '.nexus.staged_repository_id' ${WORKSPACE_DIR}/release.json)
   echo $id
 }
 
@@ -59,7 +59,7 @@ function release_status_get_repo_id {
 function release_status_staging_repo_created {
   repoId="\"$1\""
   # Save the Nexus Repository ID in the release.json file
-  saveId=$(jq --raw-output '.nexus.staged_repository_id='"${repoId}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
+  saveId=$(jq -r '.nexus.staged_repository_id='"${repoId}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
 
 }
 
@@ -68,12 +68,12 @@ function release_status_write_step {
   step="\"$1\""
   status="\"$2\""
 
-    $(jq --raw-output '.step.name='"${step}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
-    $(jq --raw-output '.step.status='"${status}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
+    $(jq -r '.step.name='"${step}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
+    $(jq -r '.step.status='"${status}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
 }
 
 # update the status of the last step (for errors)
 function release_status_update_step_status {
   status="\"$1\""
-    $(jq --raw-output '.step.status='"${status}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
+    $(jq -r '.step.status='"${status}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
 }

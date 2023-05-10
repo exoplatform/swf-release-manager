@@ -30,7 +30,7 @@ function release_catalog_download_from_url() {
 		response=$(sed "s|\${release-version}|${versionSuffix}|g" <<< $response)
 	fi
 
-	CATALOG=$(echo $response | jq --raw-output)
+	CATALOG=$(echo $response | jq -r)
 	echo $CATALOG >$DATAS_DIR/catalog.json
 
 	printFooter "Download catalog."

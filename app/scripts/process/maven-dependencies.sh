@@ -12,7 +12,7 @@ function maven_dependencies_update_before_release {
    release_status_write_step $MAVEN_DEPS_BEFORE $STATUS_IN_PROGESS
 
    # Find all maven_property_version and then release.version, current and next
-   ARR=($(jq --raw-output '.[] | [.maven_property_version, .release.version, .release.current_snapshot_version, .release.next_snapshot_version] | join(",")' ${DATAS_DIR}/catalog.json))
+   ARR=($(jq -r '.[] | [.maven_property_version, .release.version, .release.current_snapshot_version, .release.next_snapshot_version] | join(",")' ${DATAS_DIR}/catalog.json))
 
    if [  -z ${ARR+x}  ]; then
      # "No projects with name: " $1
@@ -56,7 +56,7 @@ function maven_dependencies_update_after_release {
    release_status_write_step $MAVEN_DEPS_AFTER $STATUS_IN_PROGESS
 
    # Find all maven_property_version and then release.version, current and next
-   ARR=($(jq --raw-output '.[] | [.maven_property_version, .release.version, .release.current_snapshot_version, .release.next_snapshot_version] | join(",")' ${DATAS_DIR}/catalog.json))
+   ARR=($(jq -r '.[] | [.maven_property_version, .release.version, .release.current_snapshot_version, .release.next_snapshot_version] | join(",")' ${DATAS_DIR}/catalog.json))
 
    if [  -z ${ARR+x}  ]; then
      # "No projects with name: " $1
