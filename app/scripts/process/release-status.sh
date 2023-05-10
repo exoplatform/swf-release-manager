@@ -75,5 +75,5 @@ function release_status_write_step {
 # update the status of the last step (for errors)
 function release_status_update_step_status {
   status="\"$1\""
-    $(json -I -f ${WORKSPACE_DIR}/release.json -e 'this.step.status='${status}'' )
+    $(jq --raw-output '.step.status='"${status}"'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
 }
