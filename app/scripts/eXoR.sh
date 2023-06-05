@@ -408,9 +408,9 @@ function checkSoftwareVersions {
   log "-----"
   mvn --version 2>&1 | tee -a ${LOGS_DIR}/infos.log
   log "-----"
-  log "JSON VERSION"
+  log "JQ VERSION"
   log "-----"
-  json --version 2>&1 | tee -a ${LOGS_DIR}/infos.log
+  jq --version 2>&1 | tee -a ${LOGS_DIR}/infos.log
   log "-----"
   printFooter "Check software for release"
 

@@ -29,7 +29,7 @@ function release_status_init {
   myIssueId="\"$1\""
   myProjectId="\"$2\""
   # Save the ID in the release.json file
-  saveId=$(json -I -f ${WORKSPACE_DIR}/release.json -e 'this.id='${myIssueId}';  this.Task.issue_id='${myIssueId}'; this.project='${myProjectId}' ' )
+  saveId=$(jq -r '.id='${myIssueId}' | .Task.issue_id='${myIssueId}' | .project='${myProjectId}'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
 
   release_status_write_step $INIT_PARAMS $STATUS_DONE
 }
@@ -41,17 +41,17 @@ function release_status_has_id {
 }
 
 function release_status_get_project_id {
-  id=$(json -f ${WORKSPACE_DIR}/release.json -a project)
+  id=$(jq -r '.project' ${WORKSPACE_DIR}/release.json)
   echo $id
 }
 
 function release_status_get_issue_id {
-  id=$(json -f ${WORKSPACE_DIR}/release.json -a Task.issue_id)
+  id=$(jq -r '.Task.issue_id' ${WORKSPACE_DIR}/release.json)
   echo $id
 }
 
 function release_status_get_repo_id {
-  id=$(json -f ${WORKSPACE_DIR}/release.json -a nexus.staged_repository_id)
+  id=$(jq -r '.nexus.staged_repository_id' ${WORKSPACE_DIR}/release.json)
   echo $id
 }
 
@@ -59,7 +59,8 @@ function release_status_get_repo_id {
 function release_status_staging_repo_created {
   repoId="\"$1\""
   # Save the Nexus Repository ID in the release.json file
-  saveId=$(json -I -f ${WORKSPACE_DIR}/release.json -e 'this.nexus.staged_repository_id='${repoId}'' )
+  saveId=$(jq -r '.nexus.staged_repository_id='${repoId}'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
+
 }
 
 # Write the release step and status on the release.json file
@@ -67,12 +68,12 @@ function release_status_write_step {
   step="\"$1\""
   status="\"$2\""
 
-    $(json -I -f ${WORKSPACE_DIR}/release.json -e 'this.step.name='${step}'' )
-    $(json -I -f ${WORKSPACE_DIR}/release.json -e 'this.step.status='${status}'' )
+    $(jq -r '.step.name='${step}'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
+    $(jq -r '.step.status='${status}'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
 }
 
 # update the status of the last step (for errors)
 function release_status_update_step_status {
   status="\"$1\""
-    $(json -I -f ${WORKSPACE_DIR}/release.json -e 'this.step.status='${status}'' )
+    $(jq -r '.step.status='${status}'' ${WORKSPACE_DIR}/release.json | sponge ${WORKSPACE_DIR}/release.json)
 }

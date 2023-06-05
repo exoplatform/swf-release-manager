@@ -61,12 +61,12 @@ function nexus_create_staging_repo {
   fi
 
   # Update JSON to send datas with JIRA ID and comments
-  a=$(json -I -f ${DATAS_DIR}/api/nexus-staging.json -e 'this.data.description='${request}'' )
+  a=$(jq -r '.data.description='${request}'' ${DATAS_DIR}/api/nexus-staging.json | sponge ${DATAS_DIR}/api/nexus-staging.json)
   # Create the Staging Repo
   userAgent=$(getUserAgent)
   response=$(curl -sS -H "Content-Type: application/json" -H "User-Agent: $userAgent" -v -X POST -d @${DATAS_DIR}/api/nexus-staging.json -u $user:$pwd $STAGING_SERVER_URL/profiles/$NEXUS_STAGING_PROFILE_ID/start 2>/dev/null)
   # Extraire ID from JSON response
-  id=$(echo $response | json data.stagedRepositoryId)
+  id=$(echo $response | jq -r '.data.stagedRepositoryId')
 
   if [  -z ${id+x}  ]; then
     error "[ERROR] Nexus Staging Repository not created."
