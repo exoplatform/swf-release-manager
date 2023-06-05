@@ -61,7 +61,7 @@ function nexus_create_staging_repo {
   fi
 
   # Update JSON to send datas with JIRA ID and comments
-  a=$(jq -r '.data.description='"${request}"'' ${DATAS_DIR}/api/nexus-staging.json | sponge ${DATAS_DIR}/api/nexus-staging.json)
+  a=$(jq -r '.data.description='${request}'' ${DATAS_DIR}/api/nexus-staging.json | sponge ${DATAS_DIR}/api/nexus-staging.json)
   # Create the Staging Repo
   userAgent=$(getUserAgent)
   response=$(curl -sS -H "Content-Type: application/json" -H "User-Agent: $userAgent" -v -X POST -d @${DATAS_DIR}/api/nexus-staging.json -u $user:$pwd $STAGING_SERVER_URL/profiles/$NEXUS_STAGING_PROFILE_ID/start 2>/dev/null)

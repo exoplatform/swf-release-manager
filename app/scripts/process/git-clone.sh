@@ -24,7 +24,7 @@ function git_clone_all {
 
 function git_clone_all_with_label {
   request="\"$1\""
-  ARR=($(jq -r '.[] | select(.labels | contains("'${request}'")) | [.name, .git_organization, .release.version, .release.branch] | join(",")' ${DATAS_DIR}/catalog.json))
+  ARR=($(jq -r '.[] | select(.labels | contains('${request}')) | [.name, .git_organization, .release.version, .release.branch] | join(",")' ${DATAS_DIR}/catalog.json))
 
   if [  -z ${ARR+x}  ]; then
     error "No projects with label: " $1
@@ -45,7 +45,7 @@ function git_clone_all_with_label {
 # Clone 1 project via its github name
 function git_clone_single {
   request="\"$1\""
-  ARR=($(jq -r '.[] | select(.name | contains("'${request}'")) | [.name, .git_organization, .release.version, .release.branch] | join(" ")' ${DATAS_DIR}/catalog.json))
+  ARR=($(jq -r '.[] | select(.name | contains('${request}')) | [.name, .git_organization, .release.version, .release.branch] | join(" ")' ${DATAS_DIR}/catalog.json))
   if [  -z ${ARR+x}  ]; then
     echo "No projects with name: " $1
   else
