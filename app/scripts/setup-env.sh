@@ -54,6 +54,9 @@ replaceInFile $HOME/.gitconfig @@GPG_PROGRAM@@ $HOME/gpg-no-tty.sh
 installFile $CONFIG_DIR/gpg-no-tty.sh $HOME/gpg-no-tty.sh 
 replaceInFile $HOME/gpg-no-tty.sh @@GPG_KEY_PASSPHRASE@@  $(decompress $gpg_passphrase)
 chmod +x $HOME/gpg-no-tty.sh 
+installFile $CONFIG_DIR/initgpg.sh $HOME/initgpg.sh
+replaceInFile $HOME/initgpg.sh @@GPG_KEY_PASSPHRASE@@  $(decompress $gpg_passphrase)
+chmod +x $HOME/initgpg.sh
 
 installFile $CONFIG_DIR/gitignore $HOME/.gitignore
 git config --global core.excludesfile $HOME/.gitignore
@@ -88,6 +91,7 @@ export SSH_PASS=$(decompress $ssh_passphrase)
 eval "$(ssh-agent)"
 $SCRIPTS_DIR/utils/ssh-add-pass.sh
 ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+$HOME/initgpg.sh
 printFooter " ==> Credentials..."
 
 log "Execute eXo Release command...($@)"

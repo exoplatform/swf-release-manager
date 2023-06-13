@@ -66,7 +66,7 @@ fi
 
 
 # Check if the GPG key is installed
-if [ ! -e $HOME/.gnupg/secring.gpg -o ! -e $HOME/.gnupg/pubring.gpg -o ! -e $HOME/.gnupg/gpg.conf ]; then
+if [ ! -e $HOME/.gnupg/trustdb.gpg ]; then
   echo "==============================================================================="
   echo "!!! Take care, GPG key isn't setup. It is required to do releases !!!"
   echo "==============================================================================="
