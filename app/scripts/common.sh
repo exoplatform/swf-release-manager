@@ -66,9 +66,9 @@ fi
 
 
 # Check if the GPG key is installed
-if [ ! -e $HOME/.gnupg/trustdb.gpg ]; then
+if [ ! -e $HOME/.gpg.key ]; then
   echo "==============================================================================="
-  echo "!!! Take care, GPG key isn't setup. It is required to do releases !!!"
+  echo "!!! Take care, GPG key isn't provided. It is required to do releases !!!"
   echo "==============================================================================="
 fi
 
