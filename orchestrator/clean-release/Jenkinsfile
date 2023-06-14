@@ -13,24 +13,33 @@ def createBasicAuthString(credentials) {
 def doClean(taskID, project, action, isInParallel) {
 
    def volume_name = "${taskID}-${project.name}-workspace"
-   def container_name = ""
+   def entity-name = ""
    def container_run_option = ""
    def docker_command = ""
+   def docker_inspect_command = ""
 
    // Create the right command to run in the container
    if (action == "clean-all"){
         // TODO
         //  docker ps -a --filter="name=juzu"
    } else if (action == "clean-containers"){
-       container_name = "${taskID}-${project.name}"
+       entity-name = "${taskID}-${project.name}"
        docker_command = "rm -f"
+       docker_inspect_command = "inspect -f '{{ .Created }}'"
    } else if (action == "clean-volumes"){
-       container_name = "${taskID}-${project.name}-workspace"
+       entity-name = "${taskID}-${project.name}-workspace"
        docker_command = "volume rm"
+       docker_inspect_command = "volume inspect -f '{{ .CreatedAt }}'"
    }
 
    stage ("[CLEAN] project ${project.name} for ${taskID}") {
-       sh "sudo docker ${docker_command} ${container_name} ||:"
+       def createdAt = sh (returnStdout: true, script: "sudo docker ${docker_inspect_command} ${entity-name} || :").trim()
+       if (!!createdAt) {
+            echo "Dropping ${entity-name}. its creation date: ${createdAt}." 
+            sh "sudo docker ${docker_command} ${entity-name}"
+       } else {
+            echo "Warning: ${entity-name} does not exist!." 
+       }
    }
 }
 
