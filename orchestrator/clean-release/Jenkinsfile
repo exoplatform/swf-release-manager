@@ -29,8 +29,9 @@ def doClean(taskID, project, action, isInParallel) {
        docker_command = "volume rm"
    }
 
-   stage "[CLEAN] project ${project.name} for ${taskID}"
-   sh "sudo docker ${docker_command} ${container_name} ||:"
+   stage ("[CLEAN] project ${project.name} for ${taskID}") {
+       sh "sudo docker ${docker_command} ${container_name} ||:"
+   }
 }
 
 def doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId) {
@@ -68,20 +69,22 @@ def doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId
 // Execute Release on Jenkins Slave with Docker
 node('docker') {
 
-  // Init parameters
-  stage "Init clean parameters"
   def taskID = "${TASK_ID}"
   def action = "${ACTION}"
   def p = "${PROJECTS}"
   def projectsToClean = p.split(',')
   def isInParallel = true
   def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
+  
+  // Init parameters
+  stage ("Init clean parameters") {
+    echo "* Projects: ${PROJECTS}"
+    echo "* Command: ${ACTION}"
+    echo "* Projects: ${PROJECTS}"
+    echo "* CredentialsId: ${catalogCredentialsId}: "
+  }
 
-  echo "* Projects: ${PROJECTS}"
-  echo "* Command: ${ACTION}"
-  echo "* Projects: ${PROJECTS}"
-  echo "* CredentialsId: ${catalogCredentialsId}: "
-
-  stage "[START] Clean for ${TASK_ID}"
-  doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId)
+  stage ("[START] Clean for ${TASK_ID}") {
+    doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId)
+  }
 }
