@@ -12,25 +12,34 @@ def createBasicAuthString(credentials) {
 
 def doClean(taskID, project, action, isInParallel) {
 
-   def volume_name = "${taskID}-${project.name}-workspace"
-   def container_name = ""
+   def entity_name = ""
    def container_run_option = ""
    def docker_command = ""
+   def docker_inspect_command = ""
 
    // Create the right command to run in the container
    if (action == "clean-all"){
         // TODO
         //  docker ps -a --filter="name=juzu"
    } else if (action == "clean-containers"){
-       container_name = "${taskID}-${project.name}"
+       entity_name = "${taskID}-${project.name}"
        docker_command = "rm -f"
+       docker_inspect_command = "inspect -f '{{ .Created }}'"
    } else if (action == "clean-volumes"){
-       container_name = "${taskID}-${project.name}-workspace"
+       entity_name = "${taskID}-${project.name}-workspace"
        docker_command = "volume rm"
+       docker_inspect_command = "volume inspect -f '{{ .CreatedAt }}'"
    }
 
-   stage "[CLEAN] project ${project.name} for ${taskID}"
-   sh "sudo docker ${docker_command} ${container_name} ||:"
+   stage ("[CLEAN] project ${project.name} for ${taskID}") {
+       def createdAt = sh (returnStdout: true, script: "sudo docker ${docker_inspect_command} ${entity_name} || :").trim()
+       if (!!createdAt) {
+            echo "Dropping ${entity_name}. its creation date: ${createdAt}." 
+            sh "sudo docker ${docker_command} ${entity_name}"
+       } else {
+            echo "Warning: ${entity_name} does not exist!." 
+       }
+   }
 }
 
 def doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId) {
@@ -68,20 +77,22 @@ def doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId
 // Execute Release on Jenkins Slave with Docker
 node('docker') {
 
-  // Init parameters
-  stage "Init clean parameters"
   def taskID = "${TASK_ID}"
   def action = "${ACTION}"
   def p = "${PROJECTS}"
   def projectsToClean = p.split(',')
   def isInParallel = true
   def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
+  
+  // Init parameters
+  stage ("Init clean parameters") {
+    echo "* Projects: ${PROJECTS}"
+    echo "* Command: ${ACTION}"
+    echo "* Projects: ${PROJECTS}"
+    echo "* CredentialsId: ${catalogCredentialsId}: "
+  }
 
-  echo "* Projects: ${PROJECTS}"
-  echo "* Command: ${ACTION}"
-  echo "* Projects: ${PROJECTS}"
-  echo "* CredentialsId: ${catalogCredentialsId}: "
-
-  stage "[START] Clean for ${TASK_ID}"
-  doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId)
+  stage ("[START] Clean for ${TASK_ID}") {
+    doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId)
+  }
 }
