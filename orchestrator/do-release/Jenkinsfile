@@ -47,9 +47,8 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
    stage("Container ${container_name}"){
         try {
             timeout(BUILD_TIMEOUT) {
-                sh "${config.DOCKER_CMD} run --rm ${container_run_option} -v /${jenkinsAgentRootPath}/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
-                    -v /${jenkinsAgentRootPath}/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
-                    -v /${jenkinsAgentRootPath}/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
+                sh "${config.DOCKER_CMD} run --rm ${container_run_option} \
+                    -v /opt/ciagent/.gpg.key:/home/ciagent/.gpg.key:ro \
                     -v /${jenkinsAgentRootPath}/.ssh/id_rsa:/home/ciagent/.ssh/id_rsa:ro \
                     --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
                     --env-file ${config.ENV_FILE_FROM_JENKINS} \
