@@ -265,7 +265,7 @@ $ docker build --build-arg ssh_passphrase='XXX' --build-arg nexus_token='XXXX' -
 $ docker run --rm -v ~/.gnupg/pubring.gpg:/home/ciagent/.gnupg/pubring.gpg:ro \
         -v ~/.gnupg/secring.gpg:/home/ciagent/.gnupg/secring.gpg:ro \
         -v ~/.gnupg/gpg.conf:/home/ciagent/.gnupg/gpg.conf:ro \
-        -v ~/.ssh/mgreau_rsa:/home/ciagent/.ssh/id_release:ro \
+        -v ~/.ssh/mgreau_rsa:/home/ciagent/.ssh/id_ed25519:ro \
         --env-file ~/.eXo/Release/exo-release.properties \
         -e exo_user=mgreau \
         -e CATALOG_BASE_URL=https://raw.githubusercontent.com/exoplatform/swf-release-manager-catalog/master/exo-platform/ \

@@ -49,7 +49,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
             timeout(BUILD_TIMEOUT) {
                 sh "${config.DOCKER_CMD} run --rm ${container_run_option} \
                     -v /opt/ciagent/.gpg.key:/home/ciagent/.gpg.key:ro \
-                    -v /${jenkinsAgentRootPath}/.ssh/id_release:/home/ciagent/.ssh/id_release:ro \
+                    -v /${jenkinsAgentRootPath}/.ssh/id_ed25519:/home/ciagent/.ssh/id_ed25519:ro \
                     --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
                     --env-file ${config.ENV_FILE_FROM_JENKINS} \
                     -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
