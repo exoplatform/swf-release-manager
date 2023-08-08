@@ -18,7 +18,7 @@ function maven_prepare_release {
   description=$6
 
   # Execute maven release prepare command (Don't push change on remote repository)
-  mvnCommand $project release:prepare -DpushChanges=false  -Dtag=$tag -Dsign=true -DreleaseVersion=$releaseVersion -DdevelopmentVersion=$devVersion -DscmCommentPrefix="[exo-release]($exo_user) $issueId: $description"
+  mvnCommand $project release:prepare -DpushChanges=false  -Dtag=$tag -DsignTag=true -DreleaseVersion=$releaseVersion -DdevelopmentVersion=$devVersion -DscmCommentPrefix="[exo-release]($exo_user) $issueId: $description"
 
  # log status
  release_status_write_step $MAVEN_RELEASE_PREPARE $STATUS_DONE
