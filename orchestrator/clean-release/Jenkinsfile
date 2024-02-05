@@ -32,7 +32,7 @@ def doClean(taskID, project, action, isInParallel) {
    }
 
    stage ("[CLEAN] project ${project.name} for ${taskID}") {
-       def createdAt = sh (returnStdout: true, script: "sudo docker ${docker_inspect_command} ${entity_name} || :").trim()
+       def createdAt = sh (returnStdout: true, script: "sudo docker ${docker_inspect_command} ${entity_name} 2>/dev/null || :").trim()
        if (!!createdAt) {
             echo "Dropping ${entity_name}. its creation date: ${createdAt}." 
             sh "sudo docker ${docker_command} ${entity_name}"
