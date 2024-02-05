@@ -77,8 +77,8 @@ def doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId
 // Execute Release cleanup on all Jenkins Slave with docker label
 def nodes = [:]
 nodesByLabel('docker').each {
-    nodes[release] = { ->
-        node(release) {
+    nodes[it] = { ->
+        node(it) {
             def taskID = "${TASK_ID}"
             def action = "${ACTION}"
             def p = "${PROJECTS}"
