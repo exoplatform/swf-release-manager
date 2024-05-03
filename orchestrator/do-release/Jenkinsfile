@@ -133,8 +133,18 @@ def validateProjectsToRelease(projects, config) {
   valid
 }
 
+// Allow to preserve release agent from RELEASE_AGENT envar
+def selectReleaseNode() {
+    def DEFAULT_RELEASE_LABEL = 'docker'
+    try {
+        return !!RELEASE_AGENT ? RELEASE_AGENT : DEFAULT_RELEASE_LABEL
+    } catch(ex){
+        return DEFAULT_RELEASE_LABEL
+    }
+}
+
 // Execute Release on Jenkins Slave with Docker
-node('docker') {
+node(selectReleaseNode()) {
 
   def config = [:]
 
