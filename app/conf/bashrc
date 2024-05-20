@@ -22,3 +22,6 @@ export EDITOR=vim
 export EXO_SCRIPTS=@@SCRIPTS_DIR@@
 
 export PATH=$EXO_SCRIPTS:@@TOOLS_DIR@@:.:$PATH
+
+# WA: Regression with git 1.45.1 See https://github.com/git-lfs/git-lfs/issues/5749
+export GIT_CLONE_PROTECTION_ACTIVE=false
