@@ -498,7 +498,7 @@ case $1 in
     exit;
     ;;
   "catalog-from-url")
-    release_catalog_download_from_url $2 $3
+    release_catalog_download_from_url $2 ${3:-}
     displayAvailableProjects
     exit;
     ;;
