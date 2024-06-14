@@ -94,6 +94,7 @@ function exor_release_project {
   projectName=$2
   issueId=$3
   versionSuffix=${4:-}
+  prepareReleaseSkipTests=false
 
   if [ ! -z "${versionSuffix}" ] && [[ ! "${versionSuffix}" =~ ^[0-9]{8}([0-9][0-9])?$ ]]; then 
     error "Invalid CONTINUOUS_RELEASE_SUFFIX parameter: ${versionSuffix}! Should be numeric with length 8 or 10 (eg 20221020 or 2022102001) or leave it blank!"
@@ -103,6 +104,12 @@ function exor_release_project {
   if [[ ! "${issueId}" =~ ^([0-9]+|continuous-release-template(-[a-z]+)?)$ ]]; then 
     error "Invalid TASK_ID parameter: ${issueId}! Should be numeric or refer to a continuous release catalog!"
     throw $exReleasePrerequisiteKO
+  fi
+  
+  # Skip unit tests for based CI/CD builds (eg weekly releases)
+  if [ ! -z "${versionSuffix}" ] && [[ "${versionSuffix}" =~ ^[0-9]{8}([0-9][0-9])?$ ]] && [[ "${issueId}" =~ ^[0-9]+$ ]]; then 
+    log "Skipping unit tests for this module as this release is already built and based on ${versionSuffix} suffix"
+    prepareReleaseSkipTests=true
   fi
 
   log "[DEBUG]" $issueId
@@ -147,7 +154,7 @@ function exor_release_project {
       # Execute Maven release
       maven_dependencies_update_before_release $projectName $issueId
 
-      maven_prepare_release $projectName $tagName $releaseVersion $releaseNextSnapshotVersion $issueId $projectName || throw $exProjectBuild
+      maven_prepare_release $projectName $prepareReleaseSkipTests $tagName $releaseVersion $releaseNextSnapshotVersion $issueId $projectName || throw $exProjectBuild
       # Notification to Tribe Task
       task_add_comment $projectName "release_prepare_OK" $issueId
 
