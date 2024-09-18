@@ -10,6 +10,19 @@ def createBasicAuthString(credentials) {
     [Authorization: "Basic " + authString]
 }
 
+def doCleanM2Cache(taskID) {
+   def m2cacheVolumeName = "${taskID}-m2_cache"
+   stage ("[CLEAN] m2cache for ${taskID}") {
+       def createdAt = sh (returnStdout: true, script: "sudo docker volume inspect -f '{{ .CreatedAt }}' ${m2cacheVolumeName} 2>/dev/null || :").trim()
+       if (!!createdAt) {
+            echo "Dropping ${m2cacheVolumeName}. its creation date: ${createdAt}." 
+            sh "sudo docker volume rm ${m2cacheVolumeName}"
+       } else {
+            echo "Warning: ${m2cacheVolumeName} does not exist!." 
+       }
+   }
+}
+
 def doClean(taskID, projectname, action, isInParallel) {
 
    def entity_name = ""
@@ -42,9 +55,13 @@ def doClean(taskID, projectname, action, isInParallel) {
    }
 }
 
-def doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId) {
+def doCleans(taskID, projectsToClean, action, cleanM2Cache, isInParallel, catalogCredentialsId) {
 
     def catalogURL = "${CATALOG_BASE_URL}/${TASK_ID}.json"
+
+    if(cleanM2Cache) {
+        doCleanM2Cache(taskID)
+    }
 
     def catalogRequestParameters = [:]
     def withCatalogCredentials = false
@@ -86,18 +103,20 @@ nodesByLabel('docker').each {
             def projectsToClean = p.split(',')
             def isInParallel = false
             def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
+            def cleanM2Cache = CLEAN_M2_CACHE?.toBoolean() ?: false
 
             // Init parameters
             stage ("Init clean parameters") {
                 echo "* Projects: ${PROJECTS}"
                 echo "* Command: ${ACTION}"
                 echo "* Projects: ${PROJECTS}"
+                echo "* Clean M2 Cache: ${cleanM2Cache}"
                 echo "* CredentialsId: ${catalogCredentialsId}: "
                 echo "* Agent: ${it}: "
             }
 
             stage ("[START] Clean for ${TASK_ID}") {
-                doCleans(taskID, projectsToClean, action, isInParallel, catalogCredentialsId)
+                doCleans(taskID, projectsToClean, action, cleanM2Cache, isInParallel, catalogCredentialsId)
             }
         }
     } ()
