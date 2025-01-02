@@ -12,13 +12,13 @@ def createBasicAuthString(credentials) {
 
 def doCleanM2Cache(taskID) {
    def m2cacheVolumeName = "${taskID}-m2_cache"
-   stage ("[CLEAN] m2cache for ${taskID}") {
-       def createdAt = sh (returnStdout: true, script: "sudo docker volume inspect -f '{{ .CreatedAt }}' ${m2cacheVolumeName} 2>/dev/null || :").trim()
+   stage ("[Cleanup] Remove Maven Cache for Task ID: ${taskID}") {
+       def createdAt = sh(returnStdout: true, script: "sudo docker volume inspect -f '{{ .CreatedAt }}' ${m2cacheVolumeName} 2>/dev/null || :").trim()
        if (!!createdAt) {
-            echo "Dropping ${m2cacheVolumeName}. its creation date: ${createdAt}." 
+            echo "Dropping Maven cache volume ${m2cacheVolumeName}. Creation date: ${createdAt}."
             sh "sudo docker volume rm ${m2cacheVolumeName}"
        } else {
-            echo "Warning: ${m2cacheVolumeName} does not exist!." 
+            echo "Warning: Maven cache volume ${m2cacheVolumeName} does not exist!"
        }
    }
 }
@@ -26,40 +26,36 @@ def doCleanM2Cache(taskID) {
 def doClean(taskID, projectname, action, isInParallel) {
 
    def entity_name = ""
-   def container_run_option = ""
    def docker_command = ""
    def docker_inspect_command = ""
 
-   // Create the right command to run in the container
-   if (action == "clean-all"){
-        // TODO
-        //  docker ps -a --filter="name=juzu"
-   } else if (action == "clean-containers"){
+   if (action == "clean-all") {
+        // Placeholder for future implementation
+   } else if (action == "clean-containers") {
        entity_name = "${taskID}-${projectname}"
        docker_command = "rm -f"
        docker_inspect_command = "inspect -f '{{ .Created }}'"
-   } else if (action == "clean-volumes"){
+   } else if (action == "clean-volumes") {
        entity_name = "${taskID}-${projectname}-workspace"
        docker_command = "volume rm"
        docker_inspect_command = "volume inspect -f '{{ .CreatedAt }}'"
    }
 
-   stage ("[CLEAN] project ${projectname} for ${taskID}") {
-       def createdAt = sh (returnStdout: true, script: "sudo docker ${docker_inspect_command} ${entity_name} 2>/dev/null || :").trim()
+   stage ("[Cleanup] ${action.capitalize()} for Project: ${projectname} (Task ID: ${taskID})") {
+       def createdAt = sh(returnStdout: true, script: "sudo docker ${docker_inspect_command} ${entity_name} 2>/dev/null || :").trim()
        if (!!createdAt) {
-            echo "Dropping ${entity_name}. its creation date: ${createdAt}." 
+            echo "Dropping ${entity_name}. Creation date: ${createdAt}."
             sh "sudo docker ${docker_command} ${entity_name}"
        } else {
-            echo "Warning: ${entity_name} does not exist!." 
+            echo "Warning: ${entity_name} does not exist!"
        }
    }
 }
 
 def doCleans(taskID, projectsToClean, action, cleanM2Cache, isInParallel, catalogCredentialsId) {
-
     def catalogURL = "${CATALOG_BASE_URL}/${TASK_ID}.json"
 
-    if(cleanM2Cache) {
+    if (cleanM2Cache) {
         doCleanM2Cache(taskID)
     }
 
@@ -71,28 +67,24 @@ def doCleans(taskID, projectsToClean, action, cleanM2Cache, isInParallel, catalo
         }
         withCatalogCredentials = true
     }
-    echo "Downloading catalog at ${catalogURL} withCredentials=${withCatalogCredentials}"
+    echo "Downloading catalog from ${catalogURL} (Using Credentials: ${withCatalogCredentials})"
 
     def JSONCatalog = new URL(catalogURL)
     def catalog = jsonParser(JSONCatalog.newReader(requestProperties: catalogRequestParameters))    
-    echo "Number of Projects in Catalog: " + catalog.size()
-    def catalogNames = catalog.collect{it.name}
-    // Loop first on projectsToClean to keep the order
+    echo "Projects in Catalog: " + catalog.size()
+    def catalogNames = catalog.collect { it.name }
+
     if (projectsToClean[0]?.equals('*')) {
-        for (i = 0; i < catalogNames.size(); i++) {
-            doClean(taskID, catalogNames[i], action, isInParallel)
-        }
+        catalogNames.each { doClean(taskID, it, action, isInParallel) }
     } else {
-        for (i = 0; i < projectsToClean.length; i++) {
-            def projectName = projectsToClean[i];
-            if (catalogNames.contains(projectName)) {
-                doClean(taskID, projectName, action, isInParallel)
+        projectsToClean.each {
+            if (catalogNames.contains(it)) {
+                doClean(taskID, it, action, isInParallel)
             }
         }
     }
 }
 
-// Execute Release cleanup on all Jenkins Agents with docker label
 def nodes = [:]
 nodesByLabel('docker').each {
     nodes[it] = { ->
@@ -105,19 +97,17 @@ nodesByLabel('docker').each {
             def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
             def cleanM2Cache = CLEAN_M2_CACHE?.toBoolean() ?: false
 
-            // Init parameters
-            stage ("Init clean parameters") {
+            stage ("[Initialization] Prepare Parameters for Cleanup") {
                 echo "* Projects: ${PROJECTS}"
                 echo "* Command: ${ACTION}"
-                echo "* Projects: ${PROJECTS}"
-                echo "* Clean M2 Cache: ${cleanM2Cache}"
-                echo "* CredentialsId: ${catalogCredentialsId}: "
-                echo "* Agent: ${it}: "
+                echo "* Clean Maven Cache: ${cleanM2Cache}"
+                echo "* Credentials ID: ${catalogCredentialsId}"
+                echo "* Agent Node: ${it}"
             }
 
-            stage ("[START] Clean for ${TASK_ID}") {
+            stage ("[Execution] Start Cleanup Process for Task ID: ${TASK_ID}") {
                 doCleans(taskID, projectsToClean, action, cleanM2Cache, isInParallel, catalogCredentialsId)
             }
         }
-    } ()
+    }()
 }
