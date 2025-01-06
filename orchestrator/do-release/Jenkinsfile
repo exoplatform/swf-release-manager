@@ -10,8 +10,23 @@ def createBasicAuthString(credentials) {
     [Authorization: "Basic " + authString]
 }
 
-def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInParallel, config, continuousReleaseSuffix) {
+def getContainerCommand(def releaseCMD, def project, def taskID, def continuousReleaseSuffix) {
+    // Create a map of possible release commands for easier lookup
+    def commandMap = [
+        "start"                               : "release-start ${project.name} ${taskID} ${continuousReleaseSuffix}",
+        "validate"                            : "release-validate ${taskID}",
+        "cancel"                              : "release-cancel ${project.name} ${taskID}",
+        "catalog-from-url"                    : "catalog-from-url ${taskID} ${continuousReleaseSuffix}",
+        "release-continue-from nexus:create"  : "release-continue-from nexus:create",
+        "release-continue-from nexus:deploy"  : "release-continue-from nexus:deploy",
+        "release-continue-from nexus:close"   : "release-continue-from nexus:close"
+    ]
+    
+    // Default to "Nothing to do." if the releaseCMD is not found
+    return commandMap.get(releaseCMD, "Nothing to do.")
+}
 
+def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInParallel, config, continuousReleaseSuffix) {
    def volume_name = "${taskID}-${project.name}-workspace"
    def container_name = "${taskID}-${project.name}"
    def container_run_option = "--dns=8.8.8.8 --dns=8.8.8.4 --sysctl net.ipv6.conf.all.disable_ipv6=1"
@@ -19,38 +34,21 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
    def MAVEN_EXTRA_OPTS = "${config.MAVEN_EXTRA_OPTS}"
    def BUILD_TIMEOUT = config.BUILD_TIMEOUT
 
-   // Create the right command to run in the container
-   if (releaseCMD == "start"){
-        echo "Create volume ${volume_name}"
-        sh "${config.DOCKER_CMD} volume create --name=${volume_name}"
-        container_command = "release-start ${project.name} ${taskID} ${continuousReleaseSuffix}"
-   } else if (releaseCMD == "validate"){
-       container_command = "release-validate ${taskID}"
-   } else if (releaseCMD == "cancel"){
-       container_command = "release-cancel ${project.name} ${taskID}" 
-   } else if (releaseCMD == "catalog-from-url"){
-       container_command = "catalog-from-url ${taskID} ${continuousReleaseSuffix}"
-   } else if (releaseCMD == "release-continue-from nexus:create"){
-       container_command = "release-continue-from nexus:create"
-   } else if (releaseCMD == "release-continue-from nexus:deploy"){
-       container_command = "release-continue-from nexus:deploy"
-   } else if (releaseCMD == "release-continue-from nexus:close"){
-       container_command = "release-continue-from nexus:close"
-   } else {
-       echo "Nothing to do."
-   }
-
+   // Get the container command based on releaseCMD
+   def container_command = getContainerCommand(releaseCMD, project, taskID, continuousReleaseSuffix)
+   
    if (isInParallel == "true"){
-       container_run_option = "${container_run_option} -d"
+       container_run_option += " -d" // If running in parallel, detach the container
    }
 
-   stage("Container ${container_name}"){
+   stage("Container ${container_name}") {
         try {
             timeout(BUILD_TIMEOUT) {
+                // Run the Docker container with the appropriate options
                 sh "${config.DOCKER_CMD} run --rm ${container_run_option} \
                     -v /opt/ciagent/.gpg.key:/home/ciagent/.gpg.key:ro \
-                    -v /${jenkinsAgentRootPath}/.ssh/id_ed25519:/home/ciagent/.ssh/id_ed25519:ro \
-                    --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
+                    -v ${jenkinsAgentRootPath}/.ssh/id_ed25519:/home/ciagent/.ssh/id_ed25519:ro \
+                    --env-file ${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
                     --env-file ${config.ENV_FILE_FROM_JENKINS} \
                     -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
                     -e MAVEN_EXTRA_OPTS=${MAVEN_EXTRA_OPTS} \
@@ -62,27 +60,27 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
                     '${container_command}'"
             }
         } catch (error) {
+            // If the release fails, log the error and rethrow
             echo "Failed to release ${project.name}!"
             throw error
         } finally {
-            // Delete container if still running
+            // Delete the container if still running
             sh "docker rm -f ${container_name} 2>/dev/null || true"
         }
     }
 
-    //RELMAN-3:
-    if (releaseCMD == "cancel"){
-        stage("Container ${container_name} (cleanup)"){
+    // Clean up volumes if release command is "cancel"
+    if (releaseCMD == "cancel") {
+        stage("Container ${container_name} (cleanup)") {
+            // Remove created volumes after canceling the release
             sh "${config.DOCKER_CMD} volume rm ${volume_name}"
             sh "${config.DOCKER_CMD} volume rm ${taskID}-m2_cache"
         }
     }
-    
 }
 
-// Read data from JSON Catalog and executes an action on the specified projects
 def executeActionOnProjects(projects, config, action) {
-
+    // Download the catalog file and parse it
     def catalogURL = "${CATALOG_BASE_URL}/${TASK_ID}.json"
     echo "Downloading catalog at ${catalogURL}"
 
@@ -93,133 +91,128 @@ def executeActionOnProjects(projects, config, action) {
 
     def JSONCatalog = new URL(catalogURL)
     def catalog = jsonParser(JSONCatalog.newReader(requestProperties: catalogRequestParameters))    
-    echo "Number of Projects in Catalog: " + catalog.size()
+    echo "Number of Projects in Catalog: ${catalog.size()}"
 
-    
-    // Loop first on projectsToRelease to keep the order
-    for (i = 0; i < projects.length; i++) {
-        def projectName = projects[i];
-        for (j = 0; j < catalog.size(); j++) {
-            if (catalog[j].name == projectName) {
-                action(catalog[j])
-            }
+    // Loop through the projects in order
+    projects.each { projectName ->
+        catalog.findAll { it.name == projectName }.each { project ->
+            // Perform the specified action on each project
+            action(project)
         }
     }
 }
 
 def validateProjectsToRelease(projects, config) {
-  def valid = true
-  // Map containing the projects found in the catalog and the number of actions performed
-  def releasedProjects = [:]
-  def releasedProjectCounter = { project -> 
-    def name = project.name
-    releasedProjects[name] = releasedProjects.containsKey(name) ? releasedProjects[name]+1 : 1
-  }
-  
-  executeActionOnProjects(projects, config, releasedProjectCounter)
-  
-  // check if  all the projects were found on the json
-  def unreleasedProjects = projects - releasedProjects.keySet()
-  if(unreleasedProjects.length > 0) {
-    echo "ERROR The project(s) ${unreleasedProjects} were not found in the catalog file."
-    valid = false
-  }
-  // Check if no project was present several times on the json
-  def duplicates = releasedProjects.findAll({ it.value > 1 }).keySet()
-  if(duplicates) {
-    echo "ERROR The project(s) ${duplicates} are released several times or are present several times on the json file."
-    valide = false
-  }
-  valid
+    def valid = true
+    def releasedProjects = [:]
+    
+    def releasedProjectCounter = { project -> 
+        def name = project.name
+        releasedProjects[name] = releasedProjects.containsKey(name) ? releasedProjects[name] + 1 : 1
+    }
+
+    executeActionOnProjects(projects, config, releasedProjectCounter)
+
+    // Check if all the projects were found in the catalog
+    def unreleasedProjects = projects - releasedProjects.keySet()
+    if (unreleasedProjects.length > 0) {
+        echo "ERROR: The project(s) ${unreleasedProjects} were not found in the catalog file."
+        valid = false
+    }
+
+    // Check if any project was released multiple times
+    def duplicates = releasedProjects.findAll { it.value > 1 }.keySet()
+    if (duplicates) {
+        echo "ERROR: The project(s) ${duplicates} are released multiple times or are present multiple times in the catalog."
+        valid = false
+    }
+    
+    return valid
 }
 
-// Allow to preserve release agent from RELEASE_AGENT envar
 def selectReleaseNode() {
     def DEFAULT_RELEASE_LABEL = 'docker'
-    try {
-        return !!RELEASE_AGENT ? RELEASE_AGENT : DEFAULT_RELEASE_LABEL
-    } catch(ex){
-        return DEFAULT_RELEASE_LABEL
-    }
+    // Return the value of RELEASE_AGENT if set, otherwise use the default
+    return RELEASE_AGENT ?: DEFAULT_RELEASE_LABEL
 }
 
-// Execute Release on Jenkins Slave with Docker
 node(selectReleaseNode()) {
 
-  def config = [:]
+    def config = [:]
 
-  // Init parameters
-  stage "Check Release parameters"
-  def taskID = "${TASK_ID}"
-  def releaseCMD = "${RELEASE_CMD}"
-  def p = "${PROJECTS}"
-  def projectsToRelease = p.split(',')
-  def isInParallel = "${RELEASE_PROJECTS_IN_PARALLEL}"
-  def jenkinsAgentRootPath = "${JENKINS_AGENT_ROOT_PATH}"
-  def exoUser = "${BUILD_USER_ID}"
-  def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
-  def continuousReleaseSuffix = "${CONTINUOUS_RELEASE_SUFFIX}"
-  
+    // Init parameters
+    stage("Check Release parameters") {
+        def taskID = "${TASK_ID}"
+        def releaseCMD = "${RELEASE_CMD}"
+        def projectsToRelease = "${PROJECTS}".split(',')
+        def isInParallel = "${RELEASE_PROJECTS_IN_PARALLEL}"
+        def jenkinsAgentRootPath = "${JENKINS_AGENT_ROOT_PATH}"
+        def exoUser = "${BUILD_USER_ID}"
+        def continuousReleaseSuffix = "${CONTINUOUS_RELEASE_SUFFIX}"
 
-  // Avoid directory traversing
-  config.ENV_FILE_FROM_JENKINS = "/tmp/${TASK_ID.replaceAll('/', '-')}.env"
-  config.DOCKER_CMD = env.DOCKER_CMD ?: 'sudo docker'
-  config.MAVEN_EXTRA_OPTS = MAVEN_EXTRA_OPTS ?: ''
-  config.BUILD_TIMEOUT = BUILD_TIMEOUT ?: 120 // 2 hours for each module
+        config.ENV_FILE_FROM_JENKINS = "/tmp/${TASK_ID.replaceAll('/', '-')}.env"
+        config.DOCKER_CMD = env.DOCKER_CMD ?: 'sudo docker'
+        config.MAVEN_EXTRA_OPTS = MAVEN_EXTRA_OPTS ?: ''
+        config.BUILD_TIMEOUT = BUILD_TIMEOUT ?: 120 // 2 hours
 
-  echo "* Projects: ${PROJECTS}"
-  echo "* Projects computed: ${projectsToRelease}"
-  echo "* Command: ${RELEASE_CMD}"
-  echo "* Projects: ${PROJECTS}"
-  echo "* Releases in Parallel? ${isInParallel}"
-  echo "* catalogCredentialsId : ${catalogCredentialsId}"
+        // Logging parameters for troubleshooting
+        echo "* Projects: ${PROJECTS}"
+        echo "* Projects computed: ${projectsToRelease}"
+        echo "* Command: ${RELEASE_CMD}"
+        echo "* Releases in Parallel? ${isInParallel}"
+    }
 
-  try {
-    stage("${TASK_ID}-init_docker_environment") {
-        // Write the file on the slave. We can't use groovy because the file needs to be present on the slave
-        // Init file
-        sh "echo > ${config.ENV_FILE_FROM_JENKINS}"
-        sh "chmod 600 ${config.ENV_FILE_FROM_JENKINS}"
+    try {
+        stage("${TASK_ID}-init_docker_environment") {
+            // Create and initialize the environment file on the slave
+            sh "echo > ${config.ENV_FILE_FROM_JENKINS}"
+            sh "chmod 600 ${config.ENV_FILE_FROM_JENKINS}"
 
-        if (catalogCredentialsId) {
-            withCredentials([usernamePassword(credentialsId: catalogCredentialsId, usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
-                config.CATALOG_CREDENTIALS = "${USER}:${PASSWORD}"
-
-                sh "echo CATALOG_CREDENTIALS=${config.CATALOG_CREDENTIALS} >> ${config.ENV_FILE_FROM_JENKINS}"
+            // If catalog credentials are provided, add them to the environment file
+            if (env.CATALOG_CREDENTIALS_ID) {
+                withCredentials([usernamePassword(credentialsId: env.CATALOG_CREDENTIALS_ID, usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
+                    config.CATALOG_CREDENTIALS = "${USER}:${PASSWORD}"
+                    sh "echo CATALOG_CREDENTIALS=${config.CATALOG_CREDENTIALS} >> ${config.ENV_FILE_FROM_JENKINS}"
+                }
             }
         }
-    }
 
-    stage("${TASK_ID}-projects_validation") {
-        if ( ! validateProjectsToRelease(projectsToRelease, config) ) {
+        stage("${TASK_ID}-projects_validation") {
+            // Validate the projects before proceeding
+            if (!validateProjectsToRelease(projectsToRelease, config)) {
+                error 'FAIL'
+            }
+        }
+
+        // If the build is marked as failed, terminate the pipeline
+        if (currentBuild.result == 'FAILURE') {
             error 'FAIL'
         }
-    } 
 
-    if ( currentBuild.result == 'FAILURE' ) {
-        error 'FAIL'
-    }
-
-    //Create m2 cache volume for the release
-    stage("${TASK_ID}-m2_cache") {
-        sh "${config.DOCKER_CMD} volume create --name ${TASK_ID}-m2_cache"
-    }
-
-    stage("${TASK_ID}-do_release") {
-        echo "Launching release ..."
-        def releaseAction = { project ->
-          doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInParallel, config, continuousReleaseSuffix)
+        stage("${TASK_ID}-m2_cache") {
+            // Create the m2 cache volume for Maven dependencies
+            sh "${config.DOCKER_CMD} volume create --name ${TASK_ID}-m2_cache"
         }
-        if (catalogCredentialsId) {
-        withCredentials([usernamePassword(credentialsId: catalogCredentialsId, usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
-            executeActionOnProjects(projectsToRelease, config, releaseAction)
-          }
-        } else {
-           executeActionOnProjects(projectsToRelease, config, releaseAction)
+
+        stage("${TASK_ID}-do_release") {
+            echo "Launching release ..."
+            def releaseAction = { project ->
+                // Perform the release on each project
+                doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInParallel, config, continuousReleaseSuffix)
+            }
+
+            // Execute the release action on each project, with catalog credentials if available
+            if (env.CATALOG_CREDENTIALS_ID) {
+                withCredentials([usernamePassword(credentialsId: env.CATALOG_CREDENTIALS_ID, usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
+                    executeActionOnProjects(projectsToRelease, config, releaseAction)
+                }
+            } else {
+                executeActionOnProjects(projectsToRelease, config, releaseAction)
+            }
         }
+    } finally {
+        echo 'Removing environment file'
+        // Clean up the environment file after the release process
+        sh "rm -v ${config.ENV_FILE_FROM_JENKINS}"
     }
-  } finally {
-      echo 'Removing environment file '
-      sh "rm -v ${config.ENV_FILE_FROM_JENKINS}"
-  }
 }
