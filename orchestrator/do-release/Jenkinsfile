@@ -138,17 +138,18 @@ def selectReleaseNode() {
 
 node(selectReleaseNode()) {
 
+    def taskID = "${TASK_ID}"
+    def releaseCMD = "${RELEASE_CMD}"
+    def projectsToRelease = "${PROJECTS}".split(',')
+    def isInParallel = "${RELEASE_PROJECTS_IN_PARALLEL}"
+    def jenkinsAgentRootPath = "${JENKINS_AGENT_ROOT_PATH}"
+    def exoUser = "${BUILD_USER_ID}"
+    def continuousReleaseSuffix = "${CONTINUOUS_RELEASE_SUFFIX}"
+    
     def config = [:]
 
     // Init parameters
     stage("Check Release parameters") {
-        def taskID = "${TASK_ID}"
-        def releaseCMD = "${RELEASE_CMD}"
-        def projectsToRelease = "${PROJECTS}".split(',')
-        def isInParallel = "${RELEASE_PROJECTS_IN_PARALLEL}"
-        def jenkinsAgentRootPath = "${JENKINS_AGENT_ROOT_PATH}"
-        def exoUser = "${BUILD_USER_ID}"
-        def continuousReleaseSuffix = "${CONTINUOUS_RELEASE_SUFFIX}"
 
         config.ENV_FILE_FROM_JENKINS = "/tmp/${TASK_ID.replaceAll('/', '-')}.env"
         config.DOCKER_CMD = env.DOCKER_CMD ?: 'sudo docker'
