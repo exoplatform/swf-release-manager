@@ -20,3 +20,8 @@ function git_release_clean_and_push {
    git_release_delete_branch $1 $2
    gitCommand $1 push origin $2
 }
+
+function git_push_release_tag {
+   log "Push only the tag to the remote repo"
+   gitCommand $1 push origin $2
+}

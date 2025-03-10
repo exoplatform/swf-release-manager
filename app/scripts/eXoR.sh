@@ -366,6 +366,10 @@ function exor_release_from_step {
         task_add_comment $projectName "nexus_staging_repo_release_OK" $issueId
         exit;
         ;;
+      "git:tagpush")
+        git_push_release_tag $projectName $tagName
+        exit;
+        ;;
       *)
          throw $exNexusStaging
          exit;
@@ -438,7 +442,7 @@ function usage {
   echo " --- Release commands --- "
   echo "* eXoR release-start PROJECT TASK_ID CONTINUOUS_RELEASE_SUFFIX"
   echo "* eXoR release-continue-from STEP "
-  echo "** STEP = nexus:create / nexus:deploy / nexus:close / nexus:drop / nexus:release"
+  echo "** STEP = nexus:create / nexus:deploy / nexus:close / nexus:drop / nexus:release / git:tagpush"
   echo "* eXoR release-validate TASK_ID"
   echo "* eXoR release-cancel TASK_ID"
   echo "* eXoR release-init-json PROJECT TASK_ID"
@@ -481,7 +485,7 @@ case $1 in
     exit;
     ;;
   "release-continue-from")
-    if [ $2 == "nexus:create" ] || [ $2 == "nexus:deploy" ] || [ $2 == "nexus:close" ] || [ $2 == "nexus:drop" ] || [ $2 == "nexus:release" ] ; then
+    if [ $2 == "nexus:create" ] || [ $2 == "nexus:deploy" ] || [ $2 == "nexus:close" ] || [ $2 == "nexus:drop" ] || [ $2 == "nexus:release" ] || [ $2 == "git:tagpush" ] ; then
       exor_release_from_step $2
     else
       error "[ERROR] Unknown step command."
