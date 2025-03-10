@@ -36,6 +36,8 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
        container_command = "release-continue-from nexus:deploy"
    } else if (releaseCMD == "release-continue-from nexus:close"){
        container_command = "release-continue-from nexus:close"
+   } else if (releaseCMD == "release-continue-from git:tagpush"){
+       container_command = "release-continue-from git:tagpush"
    } else {
        echo "Nothing to do."
    }
