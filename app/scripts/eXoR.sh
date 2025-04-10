@@ -163,7 +163,15 @@ function exor_release_project {
       # Notification to Tribe Task
       task_add_comment $projectName "release_perform_OK" $issueId
 
-      maven_dependencies_update_after_release $projectName $issueId
+      # Fix: Workaround to allow project release without resolving SNAPSHOT dependencies
+      # during the staging repository's close and release process.
+      #
+      # Note: This step is unnecessary because the workflow doesn't push changes with
+      # the next_snapshot_version to the release branch. It only creates a local
+      # release/$releaseVersion branch without modifying the remote.
+      # If push needed, this should be called after the release process, and complete the missing push part.
+      #
+      # maven_dependencies_update_after_release $projectName $issueId
 
       # Create Nexus Staging Repositry
       description="$issueId:$projectName:$tagName"
