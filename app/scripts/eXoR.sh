@@ -220,9 +220,9 @@ function exor_release_project {
         ;;
         *)
             error "[$ex_code] An unexpected exception was thrown"
-            throw $ex_code # you can rethrow the "exception" causing the script to exit if not caught
         ;;
     esac
+    throw $ex_code # you can rethrow the "exception" causing the script to exit if not caught
   }
 }
 
@@ -403,9 +403,9 @@ function exor_release_from_step {
           ;;
           *)
               error "[$ex_code] An unexpected exception was thrown"
-              throw $ex_code # you can rethrow the "exception" causing the script to exit if not caught
           ;;
       esac
+      throw $ex_code # you can rethrow the "exception" causing the script to exit if not caught
   }
 }
 

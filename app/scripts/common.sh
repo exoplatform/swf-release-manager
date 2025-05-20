@@ -181,22 +181,28 @@ function displayAvailableProjects {
 #
 #
 function getProjectByNameFromCatalog {
-  local result=''
-  # Look for the projectName into the catalog
-  projectName="\"$1\""
-  ARR=($(jq -r '.[] | select(.name == '$projectName') | [.name, .git_organization, .release.version, .release.branch, .release.next_snapshot_version, .release.nexus_host, .release.nexus_staging_profile] | join(":")' ${DATAS_DIR}/catalog.json))
+  local project_name="$1"
+  local catalog_file="${DATAS_DIR}/catalog.json"
+  local result=""
 
-  if [  -z ${ARR+x}  ]; then
-    # "No projects with name: " $1
-    result="0"
+  # Escape double quotes for jq
+  local jq_project_name
+  jq_project_name=$(printf '%s' "$project_name" | sed 's/"/\\"/g')
+
+  result=$(jq -r --arg name "$jq_project_name" \
+    '.[] | select(.name == $name) |
+     [.name, .git_organization, .release.version, .release.branch,
+      .release.next_snapshot_version, .release.nexus_host,
+      .release.nexus_staging_profile] | join(":")' "$catalog_file")
+
+  # If result is empty, return "0"
+  if [[ -z "$result" ]]; then
+    echo "0"
   else
-    for project in "${ARR[@]}"
-    do
-     result=${project}
-    done
+    echo "$result"
   fi
-  echo $result
 }
+
 
 function getUserAgent {
 
