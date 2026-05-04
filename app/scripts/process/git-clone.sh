@@ -1,84 +1,90 @@
 #!/bin/bash -eu
 set -o pipefail
 
-#
+# Clone all projects defined in catalog.json
 function git_clone_all {
   echo "==============================================================================="
   echo "Clone all projects defined into the catalog"
   echo "==============================================================================="
-  ARR=($(jq -r '.[] | [.name, .git_organization, .release.version, .release.branch] | join(",")' ${DATAS_DIR}/catalog.json))
-  if [  -z ${ARR+x}  ]; then
+  local -a ARR
+  mapfile -t ARR < <(jq -r '.[] | [.name, .git_organization, .release.version, .release.branch] | join(",")' "${DATAS_DIR}/catalog.json")
+  if [ ${#ARR[@]} -eq 0 ]; then
     error "No projects!"
   else
-    for project in "${ARR[@]}"
-    do
+    for project in "${ARR[@]}"; do
       IFS=',' read -r -a params <<< "$project"
-      PROJECT=${params[0]}
-      GIT_ORGANIZATION=${params[1]}
-      VERSION=${params[2]}
-      BRANCH=${params[3]}
-      git_clone ${PROJECT} ${GIT_ORGANIZATION} ${BRANCH} ${VERSION}
+      git_clone "${params[0]}" "${params[1]}" "${params[3]}" "${params[2]}"
     done
   fi
 }
 
+# Clone all projects that carry a specific label
 function git_clone_all_with_label {
-  request="\"$1\""
-  ARR=($(jq -r '.[] | select(.labels | contains('${request}')) | [.name, .git_organization, .release.version, .release.branch] | join(",")' ${DATAS_DIR}/catalog.json))
+  local label="$1"
+  local -a ARR
+  mapfile -t ARR < <(jq -r --arg lbl "$label" \
+    '.[] | select(.labels | contains($lbl)) | [.name, .git_organization, .release.version, .release.branch] | join(",")' \
+    "${DATAS_DIR}/catalog.json")
 
-  if [  -z ${ARR+x}  ]; then
-    error "No projects with label: " $1
+  if [ ${#ARR[@]} -eq 0 ]; then
+    error "No projects with label: $label"
   else
-    for project in "${ARR[@]}"
-    do
+    for project in "${ARR[@]}"; do
       IFS=',' read -r -a params <<< "$project"
-      PROJECT=${params[0]}
-      GIT_ORGANIZATION=${params[1]}
-      VERSION=${params[2]}
-      BRANCH=${params[3]}
-      git_clone ${PROJECT} ${GIT_ORGANIZATION} ${BRANCH} ${VERSION}
+      git_clone "${params[0]}" "${params[1]}" "${params[3]}" "${params[2]}"
     done
   fi
 }
 
-#
-# Clone 1 project via its github name
+# Clone a single project identified by name
 function git_clone_single {
-  request="\"$1\""
-  ARR=($(jq -r '.[] | select(.name == '$request') | [.name, .git_organization, .release.version, .release.branch] | join(" ")' ${DATAS_DIR}/catalog.json))
-  if [  -z ${ARR+x}  ]; then
-    echo "No projects with name: " $1
-  else
-    PROJECT=${ARR[0]}
-    GIT_ORGANIZATION=${ARR[1]}
-    VERSION=${ARR[2]}
-    BRANCH=${ARR[3]}
+  local name="$1"
+  local -a ARR
+  mapfile -t ARR < <(jq -r --arg name "$name" \
+    '.[] | select(.name == $name) | [.name, .git_organization, .release.version, .release.branch] | @tsv' \
+    "${DATAS_DIR}/catalog.json")
 
-    git_clone ${PROJECT} ${GIT_ORGANIZATION} ${BRANCH} ${VERSION}
+  if [ ${#ARR[@]} -eq 0 ]; then
+    echo "No project with name: $name"
+  else
+    IFS=$'\t' read -r -a params <<< "${ARR[0]}"
+    git_clone "${params[0]}" "${params[1]}" "${params[3]}" "${params[2]}"
   fi
 }
 
-#
-# Clone <git project> <git organization> <git branch> <version>
+# Clone a project: git_clone <project> <org> <branch> <version>
 function git_clone {
-  if [ -e $PRJ_DIR/$1 ]; then
-    rm -rf $PRJ_DIR/$1
+  local project="$1" org="$2" branch="$3" version="$4"
+
+  if [ -e "$PRJ_DIR/$project" ]; then
+    rm -rf "$PRJ_DIR/$project"
   fi
+
   log "==========================================================="
-  log "Cloning $1 from $GIT_HOST $2 for Release Version $4 on Branch $3"
+  log "Cloning $project from $GIT_HOST/$org for Release Version $version on Branch $branch"
   log "==========================================================="
-  release_status_write_step $GIT_CLONE $STATUS_IN_PROGESS
-  gitCommand $1 clone --depth 1 --branch $3 git@$GIT_HOST:$2/$1.git
-  if [ "${1:-}" = "platform-private-distributions" ] && [ ! -f ~/.tmpgitignore ]; then 
+  release_status_write_step "$GIT_CLONE" "$STATUS_IN_PROGESS"
+
+  gitCommand "$project" clone --depth 1 --branch "$branch" "git@$GIT_HOST:$org/$project.git"
+
+  # LFS support for repositories that need it
+  if [ "${project:-}" = "platform-private-distributions" ] && [ ! -f ~/.tmpgitignore ]; then
     echo "Repository with LFS detected. Initializing..."
-    gitCommand $1 lfs install 
-    gitCommand $1 lfs track $(gitCommand $1 lfs ls-files | awk -F. '{ ext="*."$NF; print ext}' | uniq | xargs -r)
-    gitCommand $1 reset --hard origin/$3
-    # Hack: to prevent committing .gitattributes with Release process
-    echo .gitattributes > ~/.tmpgitignore 
-    gitCommand $1 config core.excludesfile ~/.tmpgitignore
-    # End of Hack
+    gitCommand "$project" lfs install
+    # Track all extension types found in LFS
+    local lfs_extensions
+    lfs_extensions=$(cd "$PRJ_DIR/$project" && git lfs ls-files | awk -F. '{ print "*."$NF }' | sort -u)
+    if [ -n "$lfs_extensions" ]; then
+      while IFS= read -r ext; do
+        gitCommand "$project" lfs track "$ext"
+      done <<< "$lfs_extensions"
+    fi
+    gitCommand "$project" reset --hard "origin/$branch"
+    # Prevent release process from committing .gitattributes
+    echo ".gitattributes" > ~/.tmpgitignore
+    gitCommand "$project" config core.excludesfile ~/.tmpgitignore
     echo "LFS initialization done."
   fi
-  release_status_write_step $GIT_CLONE $STATUS_DONE
+
+  release_status_write_step "$GIT_CLONE" "$STATUS_DONE"
 }

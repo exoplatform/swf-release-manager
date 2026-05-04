@@ -1,45 +1,35 @@
 #!/bin/bash -eu
 set -o pipefail
 
-DATE=`date "+%Y-%m-%d--%H-%M-%S"`
-SEP="`echo | tr '\n' '\001'`"
+DATE=$(date "+%Y-%m-%d--%H-%M-%S")
+SEP="$(echo | tr '\n' '\001')"
 
-DEBUG=1
+DEBUG=${DEBUG:-0}
+
 # Debug function
-# Usage: db message in parts
 function db {
-  if [ $DEBUG -eq 1 ];
-  then
-    echo "$@"
-  fi
+  [[ $DEBUG -eq 1 ]] && echo "$@" >&2 || true
 }
-# Log function, handles input from stdin or from arguments
-# Usage: log message in parts
-# Usage2: echo message | log
+
+# Log function: reads from arguments or stdin
 function log {
-  # If there are parameters read from parameters
   if [ $# -gt 0 ]; then
-    echo "[$(date +"%D %T")] $@" | tee -a ${LOGS_DIR}/infos.log
-    db "$@"
+    echo "[$(date +"%D %T")] $*" | tee -a "${LOGS_DIR}/infos.log"
+    db "$*"
   else
-    # If there are no parameters read from stdin
-    while read data
-    do
-      echo "[$(date +"%D %T")] $data" | tee -a ${LOGS_DIR}/infos.log
+    while IFS= read -r data; do
+      echo "[$(date +"%D %T")] $data" | tee -a "${LOGS_DIR}/infos.log"
       db "$data"
     done
   fi
 }
 
-# Error function
-# Usage: error N message
+# Error function — writes to stderr and to the error log
 function error {
-  echo "[$(date +"%D %T")] $@" | tee -a ${LOGS_DIR}/errors.log
-  db "$@"
+  echo "[$(date +"%D %T")] $*" | tee -a "${LOGS_DIR}/errors.log" >&2
+  db "$*"
 }
 
-#  ============= BEGIN: essential functions ===========================================
-# Print header for log
 function printHeader {
   log ""
   log "==============================================================================="
@@ -48,7 +38,6 @@ function printHeader {
   log ""
 }
 
-# Print Footer for log
 function printFooter {
   log ""
   log "==============================================================================="
@@ -57,37 +46,33 @@ function printFooter {
   log ""
 }
 
-
-# Shell Environment
-if [ -e $HOME/.bashrc ]; then
+# Source bashrc if present
+if [ -e "$HOME/.bashrc" ]; then
   echo "Loading ... $HOME/.bashrc"
-  source $HOME/.bashrc
+  source "$HOME/.bashrc"
 fi
 
-
-# Check if the GPG key is installed
-if [ ! -e $HOME/.gpg.key ]; then
+# Warn if GPG key is missing (required for releases)
+if [ ! -e "$HOME/.gpg.key" ]; then
   echo "==============================================================================="
   echo "!!! Take care, GPG key isn't provided. It is required to do releases !!!"
   echo "==============================================================================="
 fi
 
-
-
-
-# Executes $2 git command with "$@" parameters in $1 project directory
+# Run a git command inside the project directory
+# Usage: gitCommand <project> <git-command> [args...]
 function gitCommand {
-  PRJ=$1
-  COMMAND=$2
-  shift
-  shift
+  local PRJ=$1
+  local COMMAND=$2
+  shift 2
   log "Project $PRJ : git $COMMAND in progress ..."
   if [ "$COMMAND" = "clone" ]; then
-    (cd $PRJ_DIR && git $COMMAND "$@" 2>&1 | tee -a ${LOGS_DIR}/infos.log)
+    (cd "$PRJ_DIR" && git "$COMMAND" "$@" 2>&1 | tee -a "${LOGS_DIR}/infos.log")
   else
-    (cd $PRJ_DIR/$PRJ && git $COMMAND "$@" 2>&1 | tee -a ${LOGS_DIR}/infos.log)
+    (cd "$PRJ_DIR/$PRJ" && git "$COMMAND" "$@" 2>&1 | tee -a "${LOGS_DIR}/infos.log")
   fi
-  if [ "$?" -ne "0" ]; then
+  local git_exit=${PIPESTATUS[0]}
+  if [ "$git_exit" -ne 0 ]; then
     error "!!! Sorry, git failed in $PRJ_DIR/$PRJ. Process aborted. !!!"
     exit 1
   fi
@@ -95,107 +80,82 @@ function gitCommand {
   log "==============================================================================="
 }
 
-# command to know if files have to be committed
+# Returns "true" if the working tree has uncommitted changes, "false" otherwise
 function gitCommandIsThereFilesToCommit {
-  PRJ=$1
-  shift
-  shift
-  if [ -z "$(cd $PRJ_DIR/$PRJ && git status --porcelain  2>&1)" ];
-  then
-      echo "false"
+  local PRJ=$1
+  if [ -z "$(cd "$PRJ_DIR/$PRJ" && git status --porcelain 2>&1)" ]; then
+    echo "false"
   else
-      # changes to commit
-      echo "true"
+    echo "true"
   fi
 }
 
+# Returns "true" if the current HEAD branch matches BRANCH
 function gitCommandIsDefaultBranchEqualsCOBranch {
-  PRJ=$1
-  BRANCH=$2
-  shift
-  shift
-  if [ $BRANCH = $(cd $PRJ_DIR/$PRJ && git rev-parse --abbrev-ref HEAD) ];
-  then
-      echo "true"
+  local PRJ=$1
+  local BRANCH=$2
+  if [ "$BRANCH" = "$(cd "$PRJ_DIR/$PRJ" && git rev-parse --abbrev-ref HEAD)" ]; then
+    echo "true"
   else
-      # changes to commit
-      echo "false"
+    echo "false"
   fi
 }
 
-
-
-# #############
-# MVN Functions
-# #############
-
-# Call "$@" maven phases/plugins and args in $1 project directory
+# Run a Maven command inside the project directory
+# Usage: mvnCommand <project> [mvn-args...]
 function mvnCommand {
-  PRJ=$1
+  local PRJ=$1
   shift
   log "Project $PRJ - mvn in progress ..."
-  cd $PRJ_DIR/$PRJ
-  mvn -B -e "$@" 2>&1 | tee -a ${LOGS_DIR}/infos.log
-  if [ "$?" -ne "0" ]; then
+  (cd "$PRJ_DIR/$PRJ" && mvn -B -e "$@" 2>&1 | tee -a "${LOGS_DIR}/infos.log")
+  local mvn_exit=${PIPESTATUS[0]}
+  if [ "$mvn_exit" -ne 0 ]; then
     error "!!! Sorry, maven failed in $PRJ_DIR/$PRJ. Process aborted. !!!"
     exit 1
   fi
-  cd -
   log "Done."
   log "==============================================================================="
 }
 
-
-#
-# Define possible Exception during the process
+# Exception codes
 export exReleasePrerequisite=100
 export exReleasePrerequisiteKO=103
-# Code 2xx for Maven errors
 export exProjectBuild=200
 export exProjectBuildKO=203
-# Code 3xx for Nexus errors
 export exNexusStaging=300
 
 function displayAvailableProjects {
   log " ====== AVAILABLE PROJECTS ============"
-  if [ -f ${DATAS_DIR}/catalog.json ]; then
-    ARR=($(jq -r '.[] | [.name, .release.version, .labels, .release.branch] | join(":")' ${DATAS_DIR}/catalog.json))
-    if [  -z ${ARR+x}  ]; then
+  if [ -f "${DATAS_DIR}/catalog.json" ]; then
+    local -a ARR
+    mapfile -t ARR < <(jq -r '.[] | [.name, .release.version, .labels, .release.branch] | join(":")' "${DATAS_DIR}/catalog.json")
+    if [ ${#ARR[@]} -eq 0 ]; then
       error "No projects available"
     else
-      for project in "${ARR[@]}"
-      do
-        IFS=': ' read -r -a params <<< "$project"
+      for project in "${ARR[@]}"; do
+        IFS=':' read -r -a params <<< "$project"
         log "* ${params[0]} - ${params[1]} - ${params[3]} (${params[2]})"
       done
     fi
   else
-     log "[ERROR] ${DATAS_DIR}/catalog.json not found."
-     log "[HELP] You can do:"
-     log " * eXoR.sh catalog-from-url <TASK-ID> "
-     log "in order to download the <TASK-ID>.json file."
+    log "[ERROR] ${DATAS_DIR}/catalog.json not found."
+    log "[HELP] You can do:"
+    log " * eXoR.sh catalog-from-url <TASK-ID>"
+    log "in order to download the <TASK-ID>.json file."
   fi
 }
 
-#
-#
-#
 function getProjectByNameFromCatalog {
   local project_name="$1"
   local catalog_file="${DATAS_DIR}/catalog.json"
-  local result=""
+  local result
 
-  # Escape double quotes for jq
-  local jq_project_name
-  jq_project_name=$(printf '%s' "$project_name" | sed 's/"/\\"/g')
-
-  result=$(jq -r --arg name "$jq_project_name" \
+  result=$(jq -r --arg name "$project_name" \
     '.[] | select(.name == $name) |
      [.name, .git_organization, .release.version, .release.branch,
       .release.next_snapshot_version, .release.nexus_host,
       .release.nexus_staging_profile] | join(":")' "$catalog_file")
 
-  # If result is empty, return "0"
   if [[ -z "$result" ]]; then
     echo "0"
   else
@@ -203,10 +163,6 @@ function getProjectByNameFromCatalog {
   fi
 }
 
-
 function getUserAgent {
-
-  result="eXo Release Manager v$EXOR_VERSION ($exo_user)"
-
-  echo $result
+  echo "eXo Release Manager v$EXOR_VERSION ($exo_user)"
 }

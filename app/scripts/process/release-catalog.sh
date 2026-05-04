@@ -2,40 +2,34 @@
 set -o pipefail
 
 #####
-#
-#  Process related to the JSON catalog required to start one or several releases.
-#
+# Downloads the release catalog JSON and saves it as catalog.json.
+# The catalog filename is based on the TASK ID: <TASK_ID>.json
 #####
 
-#
-# Download a JSON file and save it as catalog.json.
-# The JSOn filename is based on the TASK ID: <TASK_ID>.json
-#
-function release_catalog_download_from_url() {
+# Args: $1=task_id  $2=versionSuffix (optional)
+function release_catalog_download_from_url {
+  local task_id="$1"
+  local versionSuffix="${2:-}"
+  local curl_auth_args=()
+  local withCredentials=false
 
-	withCredentials=false
-	params=""
-	set +e
-	if [ ! -z "${CATALOG_CREDENTIALS}" ]; then
-		params="-u ${CATALOG_CREDENTIALS}"
-		withCredentials=true
-	fi
-	set -e
+  if [ -n "${CATALOG_CREDENTIALS:-}" ]; then
+    curl_auth_args=(-u "${CATALOG_CREDENTIALS}")
+    withCredentials=true
+  fi
 
-      versionSuffix=${2:-}
-	printHeader "Download catalog from ${CATALOG_BASE_URL}/$1.json withCredential=${withCredentials}"
-	response=$(curl -sS ${params} -H "Content-Type: application/json" -v ${CATALOG_BASE_URL}/$1.json 2>/dev/null)
+  printHeader "Download catalog from ${CATALOG_BASE_URL}/${task_id}.json withCredentials=${withCredentials}"
 
-	if [[ "$1" =~ ^continuous-release-template ]]; then
-		response=$(sed "s|\${release-version}|${versionSuffix}|g" <<< $response)
-	fi
+  local response
+  response=$(curl -sS "${curl_auth_args[@]}" \
+    -H "Content-Type: application/json" \
+    "${CATALOG_BASE_URL}/${task_id}.json" 2>/dev/null)
 
-	CATALOG=$(echo $response | jq -r)
-	echo $CATALOG >$DATAS_DIR/catalog.json
+  if [[ "$task_id" =~ ^continuous-release-template ]]; then
+    response=$(sed "s|\${release-version}|${versionSuffix}|g" <<< "$response")
+  fi
 
-	printFooter "Download catalog."
+  echo "$response" | jq -r > "${DATAS_DIR}/catalog.json"
+
+  printFooter "Download catalog."
 }
-
-#
-# For eXo Tribe response=$(curl -u $exo_tribe_login:$exo_tribe_password -sS -H "Content-Type: application/json" -v $URL 2>/dev/null)
-#

@@ -1,17 +1,18 @@
 #!/bin/bash -e
 
-# Store value $2 with 64b compression under key $1 in $3 file
-function storeCompressedValue {
-  COMPRESSED_VALUE=`echo -n "$2" | openssl enc -base64`
-  echo "$1=$COMPRESSED_VALUE" >> "$3"
-}
-
-# Store a value named $2 compressed in 64b under key $1 in $3 file
+# Store a base64-compressed credential in a file.
+# Usage: storeCredential <key> <value> <file>
 function storeCredential {
-  storeCompressedValue "$1" "$2" "$3"
+  local key="$1"
+  local value="$2"
+  local file="$3"
+  local compressed
+  compressed=$(echo -n "$value" | openssl enc -base64)
+  echo "${key}=${compressed}" >> "$file"
 }
 
-# decompress value $1 compressed in base64
+# Decompress a base64-encoded value.
+# Usage: decompress <encoded_value>
 function decompress {
   echo "$1" | openssl enc -base64 -d
 }
