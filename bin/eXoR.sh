@@ -26,11 +26,6 @@ printf '%s\n' "=================================================================
 # Load credentials for subshell
 source "${CREDENTIALS_FILE}"
 
-# Scripts to register github key file
-eval "$(ssh-agent)"
-"${LIB_DIR}/utils/ssh-add-pass.sh"
-unset SSH_PASS
-
 #
 # Clone one or severals projects
 function clone {
