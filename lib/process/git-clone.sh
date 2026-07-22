@@ -44,7 +44,7 @@ function git_clone_all_with_label {
 function git_clone_single {
   local name=$1
   local ARR
-  mapfile -t ARR < <(jq -r --arg name "$name" '.[] | select(.name == $name) | [.name, .git_organization, .release.version, .release.branch] | join(" ")' "${DATA_DIR}/catalog.json")
+  mapfile -t ARR < <(jq -r --arg name "$name" '.[] | select(.name == $name) | .name, .git_organization, .release.version, .release.branch' "${DATA_DIR}/catalog.json")
   if [ "${#ARR[@]}" -eq 0 ]; then
     printf '%s %s\n' "No projects with name:" "$name"
   else
