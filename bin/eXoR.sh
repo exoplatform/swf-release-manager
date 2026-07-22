@@ -3,10 +3,9 @@ set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
-LIB_DIR="${ROOT_DIR}/lib"
+LIB_DIR="${SCRIPTS_DIR:-${ROOT_DIR}/lib}"
 CONFIG_DIR="${CONFIG_DIR:-${ROOT_DIR}/conf}"
 DATA_DIR="${DATA_DIR:-${ROOT_DIR}/data}"
-export DATA_DIR="${DATA_DIR:-${ROOT_DIR}/data}"
 
 source "${LIB_DIR}/common.sh"
 source "${LIB_DIR}/utils/credentials.sh"
