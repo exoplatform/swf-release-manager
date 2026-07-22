@@ -26,7 +26,10 @@ printf '%s\n' "=================================================================
 # Load credentials for subshell
 source "${CREDENTIALS_FILE}"
 
-# Ensure key is loaded in the inherited agent
+# Scripts to register github key file
+export SSH_PASS
+SSH_PASS=$(decompress "${ssh_passphrase}")
+eval "$(ssh-agent)"
 "${LIB_DIR}/utils/ssh-add-pass.sh"
 unset SSH_PASS
 
