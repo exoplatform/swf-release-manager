@@ -130,7 +130,7 @@ pipeline {
                     def taskID = "${params.TASK_ID}".trim()
                     def action = "${params.ACTION}".trim()
                     def projectsRaw = "${params.PROJECTS}".trim()
-                    def projectsToClean = projectsRaw ? projectsRaw.split(',')*.trim() : []
+                    def projectsToClean = projectsRaw ? projectsRaw.split(',').collect { it.trim() } : []
                     def catalogCredentialsId = env.CATALOG_CREDENTIALS_ID ?: ''
                     def cleanM2Cache = params.CLEAN_M2_CACHE
 

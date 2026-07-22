@@ -183,7 +183,7 @@ pipeline {
                     def config = [:]
                     def taskID = "${params.TASK_ID}".trim()
                     def projectsRaw = "${params.PROJECTS}".trim()
-                    def projectsToRelease = projectsRaw ? projectsRaw.split(',')*.trim() : []
+                    def projectsToRelease = projectsRaw ? projectsRaw.split(',').collect { it.trim() } : []
                     def releaseCMD = "${params.RELEASE_CMD}".trim()
                     def isInParallel = "${params.RELEASE_PROJECTS_IN_PARALLEL}"
                     def jenkinsAgentRootPath = "${params.JENKINS_AGENT_ROOT_PATH}".trim()
