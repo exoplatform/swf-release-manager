@@ -52,7 +52,7 @@ def doClean(taskID, projectname, action) {
             docker_inspect_command = "volume inspect -f '{{ .CreatedAt }}'"
             break
         default:
-                    echo "Unknown action: ${action}"
+            logError("Unknown action: ${action}")
             return
     }
 
@@ -74,7 +74,7 @@ def doCleans(taskID, projectsToClean, action, cleanM2Cache, catalog) {
 
     def catalogNames = catalog.collect { it.name }
 
-    if (projectsToClean && projectsToClean[0] == '*') {
+    if (projectsToClean && projectsToClean.get(0) == '*') {
         catalogNames.each { doClean(taskID, it, action) }
     } else {
         projectsToClean.each { projectName ->

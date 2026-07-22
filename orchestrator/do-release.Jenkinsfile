@@ -51,7 +51,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
             container_command = releaseCMD
             break
         default:
-            echo "Nothing to do."
+            logWarn("Nothing to do.")
             return
     }
 
