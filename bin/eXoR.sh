@@ -26,6 +26,10 @@ printf '%s\n' "=================================================================
 # Load credentials for subshell
 source "${CREDENTIALS_FILE}"
 
+# Ensure key is loaded in the inherited agent
+"${LIB_DIR}/utils/ssh-add-pass.sh"
+unset SSH_PASS
+
 #
 # Clone one or severals projects
 function clone {
