@@ -93,8 +93,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
 }
 
 def executeActionOnProjects(projects, catalogIndex, action) {
-    for (int i = 0; i < projects.length; i++) {
-        def projectName = projects[i]
+    projects.each { projectName ->
         def project = catalogIndex[projectName]
         if (project) {
             action(project)
@@ -116,7 +115,7 @@ def validateProjectsToRelease(projects, catalogIndex) {
         valid = false
     }
 
-    def duplicates = releasedProjects.findAll { it.value > 1 }.keySet()
+    def duplicates = releasedProjects.findAll { it.value > 1 }.collect { it.key }
     if (duplicates) {
         logError("The project(s) ${duplicates} are released several times or are present several times in the project list.")
         valid = false
