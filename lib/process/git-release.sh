@@ -1,0 +1,24 @@
+#!/bin/bash -eu
+set -o pipefail
+
+function git_release_create_branch {
+  log "Create release branch release/$2"
+  gitCommand "$1" checkout -b "release/$2"
+}
+
+function git_release_delete_branch {
+  log "Delete release branch release/$2"
+  gitCommand "$1" checkout -
+  gitCommand "$1" branch -D "release/$2"
+}
+
+function git_release_clean_and_push {
+  log "Push only the tag to the remote repo"
+  git_release_delete_branch "$1" "$2"
+  gitCommand "$1" push origin "$2"
+}
+
+function git_push_release_tag {
+  log "Push only the tag to the remote repo"
+  gitCommand "$1" push origin "$2"
+}

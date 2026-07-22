@@ -19,54 +19,15 @@ image::exo-release-manager-overview.png[]
 
 There are 3 big parts for the eXo Release Process:
 
-. first, *create the required resources* (JIRA, JSON catalog) for the Release and *synchronize* GitHub repositories
+. first, create the required resources (JSON catalog) for the Release and *synchronize* GitHub repositories
 . then *execute* the eXo Release from Jenkins
 . finally, clean up used resources
 
 === Prepare the Release
 
-==== Create the JIRA SWF
-
-All the Release Process is based on a JIRA ID, so a JIRA Release must be created with the following params:
-
-JIRA Project:: *Company Software Factory (SWF)* : *https://jira.exoplatform.org/browse/SWF*
-JIRA Summary:: *[Release]*...
-+
-[IMPORTANT]
-It's *mandatory* to start the Summary with the prefix *[Release]* (for Jenkins Job ) +
-_example: [Release] Weekly Releases W27_
-+
-JIRA Components:: Support
-JIRA Description:: Add all projects to release with *Git branches and versions*
-+
-
-[source,jira]
-----
-GateIn Portal
-/----
-** Release version: *{{4.4.0-M06-PLF}}*
-** Release branch: https://github.com/exoplatform/gatein-portal/tree/develop
-
-PLF
-/----
-* PLF projects from {{platform-ui}} to {{platform}} version
-** Release version: *{{4.4.0-M06}}*
-** Release branch: https://github.com/exoplatform/commons/tree/develop
-
-Chat Application
-/----
-* Release version: *{{1.4.0-M04}}*
-* Release branch: https://github.com/exoplatform/chat-application/tree/develop
-----
-+
-
-[TIP]
-Use an existing one https://jira.exoplatform.org/browse/SWF-3688 and clone it.
-
-
 ==== Create the JSON Catalog
 
-Based on the *JIRA description about project to release* and the eXo Components diagram, create the JSON Catalog
+Based on the projects and the eXo Components diagram, create the JSON Catalog
 for the release:
 
 [source,json]
@@ -243,11 +204,13 @@ Use the *Rebuild* Jenkins option to have the form pre-filled and update the proj
 ----
 ...
 ADD exo-release-manager.tar.gz ${EXO_CI_TMP_DIR}
-RUN cp -R ${EXO_CI_TMP_DIR}/app/conf/* ${CONFIG_DIR} \
-        && cp -R ${EXO_CI_TMP_DIR}/app/scripts/* ${SCRIPTS_DIR} \
-        && cp -R ${EXO_CI_TMP_DIR}/app/datas/* ${DATAS_DIR} \
+RUN cp -R ${EXO_CI_TMP_DIR}/conf/* ${CONFIG_DIR} \
+        && cp -R ${EXO_CI_TMP_DIR}/lib/* ${SCRIPTS_DIR} \
+        && cp -R ${EXO_CI_TMP_DIR}/data/* ${DATA_DIR} \
         && chmod u+x ${SCRIPTS_DIR}/*.sh \
-        && chmod u+x ${SCRIPTS_DIR}/utils/*.sh
+        && chmod u+x ${SCRIPTS_DIR}/utils/*.sh \
+        && cp ${EXO_CI_TMP_DIR}/bin/eXoR.sh ${SCRIPTS_DIR}/eXoR.sh \
+        && chmod u+x ${SCRIPTS_DIR}/eXoR.sh
 ...
 ----
 +
@@ -255,10 +218,10 @@ RUN cp -R ${EXO_CI_TMP_DIR}/app/conf/* ${CONFIG_DIR} \
 +
 [source,shell]
 ----
-$ docker build --build-arg ssh_passphrase='XXX' --build-arg nexus_token='XXXX' --build-arg gpg_passphrase='XXX' --build-arg jira_auth_header='XXXX' --build-arg jboss_password='XXX' -t exoplatform/release:RELMAN-1 .
+$ docker build --build-arg ssh_passphrase='XXX' --build-arg nexus_token='XXXX' --build-arg gpg_passphrase='XXX' --build-arg jboss_password='XXX' -t exoplatform/release:RELMAN-1 .
 ----
 +
-. Use the `RELEASE-155` JIRA to test a release with the `maven-sandbox-project`
+. Use the `RELEASE-155` task to test a release with the `maven-sandbox-project`
 +
 [source,shell]
 ----
