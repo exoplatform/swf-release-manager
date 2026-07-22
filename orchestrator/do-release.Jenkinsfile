@@ -1,18 +1,10 @@
 #!/usr/bin/groovy
 
-def COLOR_GREEN  = '\033[32m'
-def COLOR_RED    = '\033[31m'
-def COLOR_YELLOW = '\033[33m'
-def COLOR_BLUE   = '\033[34m'
-def COLOR_CYAN   = '\033[36m'
-def COLOR_BOLD   = '\033[1m'
-def COLOR_RESET  = '\033[0m'
-
-def logInfo(msg)    { ansiColor('xterm') { echo "${COLOR_BLUE}[INFO]${COLOR_RESET} ${msg}" } }
-def logSuccess(msg) { ansiColor('xterm') { echo "${COLOR_GREEN}[OK]${COLOR_RESET} ${msg}" } }
-def logWarn(msg)    { ansiColor('xterm') { echo "${COLOR_YELLOW}[WARN]${COLOR_RESET} ${msg}" } }
-def logError(msg)   { ansiColor('xterm') { echo "${COLOR_RED}[ERROR]${COLOR_RESET} ${msg}" } }
-def logStage(msg)   { ansiColor('xterm') { echo "${COLOR_CYAN}${COLOR_BOLD}${msg}${COLOR_RESET}" } }
+def logInfo(msg)    { ansiColor('xterm') { echo "\033[34m[INFO]\033[0m ${msg}" } }
+def logSuccess(msg) { ansiColor('xterm') { echo "\033[32m[OK]\033[0m ${msg}" } }
+def logWarn(msg)    { ansiColor('xterm') { echo "\033[33m[WARN]\033[0m ${msg}" } }
+def logError(msg)   { ansiColor('xterm') { echo "\033[31m[ERROR]\033[0m ${msg}" } }
+def logStage(msg)   { ansiColor('xterm') { echo "\033[36m\033[1m${msg}\033[0m" } }
 
 @NonCPS
 def jsonParser(def json) {
