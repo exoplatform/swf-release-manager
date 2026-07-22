@@ -95,4 +95,5 @@ ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 printFooter " ==> Credentials..."
 
 log "Execute eXo Release command...($*)"
-exec "${SCRIPT_DIR}/eXoR.sh" "$@"
+# Docker passes command as a single quoted argument; word-split for eXoR.sh
+exec "${SCRIPT_DIR}/eXoR.sh" $@
