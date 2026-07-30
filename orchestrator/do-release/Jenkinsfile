@@ -24,6 +24,10 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
         echo "Create volume ${volume_name}"
         sh "${config.DOCKER_CMD} volume create --name=${volume_name}"
         container_command = "release-start ${project.name} ${taskID} ${continuousReleaseSuffix}"
+   } else if (releaseCMD == "copy"){
+        echo "Create volume ${volume_name}"
+        sh "${config.DOCKER_CMD} volume create --name=${volume_name}"
+        container_command = "release-copy ${project.name} ${taskID}"
    } else if (releaseCMD == "validate"){
        container_command = "release-validate ${taskID}"
    } else if (releaseCMD == "cancel"){

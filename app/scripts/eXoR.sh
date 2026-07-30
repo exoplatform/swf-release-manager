@@ -13,6 +13,7 @@ source ${SCRIPTS_DIR}/process/git-release.sh
 source ${SCRIPTS_DIR}/process/nexus-repos.sh
 source ${SCRIPTS_DIR}/process/maven-release.sh
 source ${SCRIPTS_DIR}/process/maven-dependencies.sh
+source ${SCRIPTS_DIR}/process/release-copy.sh
 source ${SCRIPTS_DIR}/notifications/tasks.sh
 
 echo "==============================================================================="
@@ -449,6 +450,8 @@ function usage {
   echo " "
   echo " --- Release commands --- "
   echo "* eXoR release-start PROJECT TASK_ID CONTINUOUS_RELEASE_SUFFIX"
+  echo "* eXoR release-copy PROJECT TASK_ID"
+  echo "** Requires catalog entries with 'copy.src_version'; target version is release.version"
   echo "* eXoR release-continue-from STEP "
   echo "** STEP = nexus:create / nexus:deploy / nexus:close / nexus:drop / nexus:release / git:tagpush"
   echo "* eXoR release-validate TASK_ID"
@@ -521,6 +524,10 @@ case $1 in
     displayAvailableProjects
     exit;
     ;;
+  "release-copy")
+    exor_release_copy $@
+    exit;
+    ;;
   "log-software-versions")
     checkSoftwareVersions
     exit;
@@ -528,5 +535,5 @@ case $1 in
   *)
      usage
      exit;
-     ;;
+     ;; 
 esac
