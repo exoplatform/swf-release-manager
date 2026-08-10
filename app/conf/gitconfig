@@ -9,7 +9,7 @@
 	gpgsign = true
 
 [gpg]
-        program = @@GPG_PROGRAM@@
+        format = @@GPG_FORMAT@@
 
 [core]
   editor = "/usr/bin/vim.tiny"

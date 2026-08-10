@@ -49,11 +49,8 @@ installFile $CONFIG_DIR/gitconfig $HOME/.gitconfig
 replaceInFile $HOME/.gitconfig @@GITHUB_LOGIN@@          $github_login
 replaceInFile $HOME/.gitconfig @@GITHUB_FULLNAME@@       $github_fullname
 replaceInFile $HOME/.gitconfig @@GITHUB_EMAIL@@          $github_email
-replaceInFile $HOME/.gitconfig @@GITHUB_SIGNING_KEY@@    $gpg_keyname
-replaceInFile $HOME/.gitconfig @@GPG_PROGRAM@@ $HOME/gpg-no-tty.sh 
-installFile $CONFIG_DIR/gpg-no-tty.sh $HOME/gpg-no-tty.sh 
-replaceInFile $HOME/gpg-no-tty.sh @@GPG_KEY_PASSPHRASE@@  $(decompress $gpg_passphrase)
-chmod +x $HOME/gpg-no-tty.sh 
+replaceInFile $HOME/.gitconfig @@GITHUB_SIGNING_KEY@@    $ssh_signing_key_path
+replaceInFile $HOME/.gitconfig @@GPG_FORMAT@@ ssh
 installFile $CONFIG_DIR/initgpg.sh $HOME/initgpg.sh
 replaceInFile $HOME/initgpg.sh @@GPG_KEY_PASSPHRASE@@  $(decompress $gpg_passphrase)
 chmod +x $HOME/initgpg.sh

@@ -52,6 +52,8 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
                 sh "${config.DOCKER_CMD} run --rm ${container_run_option} \
                     -v /opt/ciagent/.gpg.key:/home/ciagent/.gpg.key:ro \
                     -v /${jenkinsAgentRootPath}/.ssh/id_ed25519:/home/ciagent/.ssh/id_ed25519:ro \
+                    -v /opt/ciagent/.ssh/id_ed25519_commit_signing:/home/ciagent/.ssh/id_ed25519_commit_signing:ro \
+                    -v /opt/ciagent/.ssh/id_ed25519_commit_signing.pub:/home/ciagent/.ssh/id_ed25519_commit_signing.pub:ro \
                     --env-file /${jenkinsAgentRootPath}/.eXo/Release/exo-release.properties \
                     --env-file ${config.ENV_FILE_FROM_JENKINS} \
                     -e CATALOG_BASE_URL=${CATALOG_BASE_URL} \
