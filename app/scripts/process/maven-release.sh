@@ -35,7 +35,7 @@ function maven_prepare_release {
 # * Add the ability to skip tests for release-perform
 #
 # 1- Check release args (skipTest or not)
-# 2- Execute maven release perform command with local branch
+# 2- Execute maven release perform command with local branch (artifacts staged locally)
 # 3- Drop release branch and clean useless commits
 function maven_perform_release {
   # init
@@ -52,8 +52,10 @@ function maven_perform_release {
     releaseArgsSkipTests="-DskipTests"
   fi
 
-  # Execute maven release perform command
-  mvnCommand $project release:perform $releaseArgs "-Darguments=${releaseArgsSkipTests} -DaltDeploymentRepository=local::default::file://${LOCAL_STAGING_DIR}"
+  # Nexus 3: stage locally with the nxrm3 plugin (deferred deployment), uploaded later by nxrm3:upload
+  mvnCommand $project release:perform $releaseArgs \
+    "-Dgoals=deploy ${NXRM3_PLUGIN}:staging-deploy" \
+    "-Darguments=${releaseArgsSkipTests} -Dmaven.deploy.skip=true -DskipNexusStagingDeployMojo=true -DstageLocally=true -DaltStagingDirectory=${LOCAL_STAGING_DIR}"
 
   # log status
   release_status_write_step $MAVEN_RELEASE_PERFORM $STATUS_DONE
