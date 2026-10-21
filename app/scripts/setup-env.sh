@@ -64,8 +64,6 @@ replaceInFile $HOME/.m2/settings.xml @@NEXUS_LOGIN@@          $nexus_login
 replaceInFile $HOME/.m2/settings.xml @@NEXUS_TOKEN@@          $(decompress $nexus_token)
 replaceInFile $HOME/.m2/settings.xml @@EXO_USER@@             $exo_user
 replaceInFile $HOME/.m2/settings.xml @@EXOR_VERSION@@         $EXOR_VERSION
-replaceInFile $HOME/.m2/settings.xml @@JBOSS_LOGIN@@          $jboss_login
-replaceInFile $HOME/.m2/settings.xml @@JBOSS_PASSWORD@@       $(decompress $jboss_password)
 replaceInFile $HOME/.m2/settings.xml @@GPG_KEY_PASSPHRASE@@   $(decompress $gpg_passphrase)
 replaceInFile $HOME/.m2/settings.xml @@GPG_KEY_NAME@@         $gpg_keyname
 replaceInFile $HOME/.m2/settings.xml @@TOOLS_DIR@@            $TOOLS_DIR
