@@ -59,7 +59,19 @@ installFile $CONFIG_DIR/gitignore $HOME/.gitignore
 git config --global core.excludesfile $HOME/.gitignore
 
 # MAVEN Config
-installFile $CONFIG_DIR/settings.xml $HOME/.m2/settings.xml
+# Maven 3.10+ scopes server credentials by repository origin and understands
+# <repositoryOrigins>; older versions only warn about the unknown tag, so pick
+# the settings template matching the installed Maven.
+maven_version=""
+if command -v mvn >/dev/null 2>&1; then
+  maven_version=$(mvn -version 2>/dev/null | awk '/Apache Maven/{print $3; exit}') || maven_version=""
+fi
+maven_settings=$CONFIG_DIR/settings.xml
+if [ -n "$maven_version" ] && [ "$(printf '%s\n' "3.10" "$maven_version" | sort -V | sed -n 1p)" = "3.10" ]; then
+  maven_settings=$CONFIG_DIR/settings-maven310.xml
+fi
+log "Maven ${maven_version:-unknown} detected, installing ${maven_settings##*/} as \$HOME/.m2/settings.xml"
+installFile $maven_settings $HOME/.m2/settings.xml
 replaceInFile $HOME/.m2/settings.xml @@NEXUS_LOGIN@@          $nexus_login
 replaceInFile $HOME/.m2/settings.xml @@NEXUS_TOKEN@@          $(decompress $nexus_token)
 replaceInFile $HOME/.m2/settings.xml @@EXO_USER@@             $exo_user
