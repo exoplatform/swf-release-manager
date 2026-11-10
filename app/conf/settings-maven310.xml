@@ -43,12 +43,18 @@
       <id>exo.private</id>
       <username>@@NEXUS_LOGIN@@</username>
       <password>@@NEXUS_TOKEN@@</password>
+      <repositoryOrigins>
+        <repositoryOrigin>https://repository.exoplatform.org</repositoryOrigin>
+      </repositoryOrigins>
     </server>
     <!-- To download from our staging repositories -->
     <server>
       <id>exo.staging</id>
       <username>@@NEXUS_LOGIN@@</username>
       <password>@@NEXUS_TOKEN@@</password>
+      <repositoryOrigins>
+        <repositoryOrigin>https://repository.exoplatform.org</repositoryOrigin>
+      </repositoryOrigins>
       <configuration>
         <httpConfiguration>
           <put>
