@@ -85,9 +85,9 @@ function exor_release_check_prerequisites {
 # 6. Maven release:prepare
 # 7. Maven release:perform
 # 5. Update Maven RELEASE dependencies to SNAPSHOTdependencies
-# 6. Nexus: Create Nexus Staging Repo
+# 6. Nexus: Create the Nexus staging tag
 #
-# 7. Nexus: Close Staging Repo
+# 7. Nexus: Upload, check (close) and release the tagged components
 # 8.
 function exor_release_project {
   # Init
@@ -450,7 +450,7 @@ function usage {
   echo " --- Release commands --- "
   echo "* eXoR release-start PROJECT TASK_ID CONTINUOUS_RELEASE_SUFFIX"
   echo "* eXoR release-continue-from STEP "
-  echo "** STEP = nexus:create / nexus:deploy / nexus:close / nexus:drop / nexus:release / git:tagpush"
+  echo "** STEP = nexus:create (tag) / nexus:deploy (upload) / nexus:close / nexus:drop / nexus:release / git:tagpush"
   echo "* eXoR release-validate TASK_ID"
   echo "* eXoR release-cancel TASK_ID"
   echo "* eXoR release-init-json PROJECT TASK_ID"

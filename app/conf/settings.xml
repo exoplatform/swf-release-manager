@@ -61,27 +61,12 @@
         </httpConfiguration>
       </configuration>
     </server>
-    <!-- =========================== -->
-    <!-- JBoss.org credentials       -->
-    <!-- =========================== -->
-    <server>
-      <!-- To deploy snapshots to JBoss repository -->
-      <id>jboss-snapshots-repository</id>
-      <username>@@JBOSS_LOGIN@@</username>
-      <password>@@JBOSS_PASSWORD@@</password>
-    </server>
-     <!-- To deploy releases to JBoss repository -->
-    <server>
-      <id>jboss-releases-repository</id>
-      <username>@@JBOSS_LOGIN@@</username>
-      <password>@@JBOSS_PASSWORD@@</password>
-    </server>
   </servers>
   <mirrors>
     <mirror>
       <id>exo-central-server</id>
-      <mirrorOf>external:*,!exo.private,!exo.staging,!jboss.staging</mirrorOf>
-      <url>https://repository.exoplatform.org/public</url>
+      <mirrorOf>external:*,!exo.private,!exo.staging</mirrorOf>
+      <url>https://repository2.exoplatform.org/public</url>
     </mirror>
     <mirror>
       <id>maven-default-http-blocker</id>
@@ -120,7 +105,7 @@
       <repositories>
         <repository>
           <id>exo.private</id>
-          <url>https://repository.exoplatform.org/private</url>
+          <url>https://repository2.exoplatform.org/private</url>
           <releases>
             <enabled>true</enabled>
           </releases>
@@ -132,7 +117,7 @@
       <pluginRepositories>
         <pluginRepository>
           <id>exo.private</id>
-          <url>https://repository.exoplatform.org/private</url>
+          <url>https://repository2.exoplatform.org/private</url>
           <releases>
             <enabled>true</enabled>
           </releases>
@@ -147,28 +132,13 @@
       <repositories>
         <repository>
           <id>exo.staging</id>
-          <url>https://repository.exoplatform.org/staging</url>
+          <url>https://repository2.exoplatform.org/repository/staging</url>
         </repository>
       </repositories>
       <pluginRepositories>
         <pluginRepository>
           <id>exo.staging</id>
-          <url>https://repository.exoplatform.org/staging</url>
-        </pluginRepository>
-      </pluginRepositories>
-    </profile>
-    <profile>
-      <id>jboss-staging</id>
-      <repositories>
-        <repository>
-          <id>jboss.staging</id>
-          <url>https://repository.jboss.org/nexus/content/groups/staging/</url>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>jboss.staging</id>
-          <url>https://repository.jboss.org/nexus/content/groups/staging/</url>
+          <url>https://repository2.exoplatform.org/repository/staging</url>
         </pluginRepository>
       </pluginRepositories>
     </profile>
@@ -206,10 +176,8 @@
     <activeProfile>local-properties</activeProfile>
     <activeProfile>exo-private</activeProfile>
     <activeProfile>exo-staging</activeProfile>
-    <!--<activeProfile>jboss-staging</activeProfile>-->
     <!-- Profiles required for JCR and GateIn -->
     <activeProfile>release</activeProfile>
-    <!--<activeProfile>jboss-release</activeProfile>-->
     <!--<activeProfile>download</activeProfile>-->
   </activeProfiles>
   <pluginGroups>

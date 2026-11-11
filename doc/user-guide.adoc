@@ -128,11 +128,11 @@ for the release:
 <10> *Next version* to set *in projects which depends on it*
 <11> *NOT USED for now* (used by old release scripts, remove it?)
 <12> *NOT USED for now* (used by old release scripts, remove it?)
-<13> *Nexus Host* to use for the project
-<14> *Nexus Staging Profile* to use for the project
+<13> *Nexus Host* to use for the project (not used any more)
+<14> *Nexus Staging Profile* to use for the project: selects the staging/release repositories pair (`NEXUS_STAGING_REPO_<PROFILE>` / `NEXUS_RELEASE_REPO_<PROFILE>`)
 
 [IMPORTANT]
-The *Nexus Staging Profile*  is very important specially for Private and Private Trial projects.
+The *Nexus Staging Profile* is very important specially for Private and Private Trial projects.
 
 
 ==== Execute Jenkins jobs for Synchronization
@@ -194,30 +194,21 @@ you can validate the release by release all Nexus repositories:
 
 == Known issues
 
-=== Nexus Repository: Rule "RepositoryWritePolicy" failures
+=== Nexus Repository 3 staging
 
-The Nexus Repository failed to release because of *properties file*
+The release uses the Nexus Repository 3 Pro *staging* feature through the Sonatype `nxrm3-maven-plugin`:
 
-[source, text]
-----
-[ERROR]
-[ERROR] Nexus Staging Rules Failure Report
-[ERROR] ==================================
-[ERROR]
-[ERROR] Repository "exo_public_releases-2146" failures
-[ERROR]   Rule "RepositoryWritePolicy" failures
-[ERROR]     * Artifact updating: Repository ='exo-releases:[H][R] eXo Releases' does not allow updating artifact='/129ae1bfa78515.properties'
-----
-====
-This problem is due to the fact that you have launch the release twice (until step nexus:close) without cleaning the workspace before the 2nd execution.
-So you have a XXXX.properties files which contains references to a unknown (removed)  Nexus Staging repository. +
+[cols="1,3"]
+|===
+|Release Manager step |Nexus 3 operation
+|`nexus:create` |generates the staging *tag* (`<task>-<project>-<version>`), saved in `release.json`
+|`nexus:deploy` |uploads the locally staged artifacts to the staging repository with the tag (`nxrm3:upload`)
+|`nexus:close` |checks that components carry the tag (there is no close in Nexus 3); with CI/CD releases also releases them
+|`nexus:release` |moves the tagged components to the release repository (`nxrm3:staging-move`)
+|`nexus:drop` |deletes the tagged components (`nxrm3:staging-delete`)
+|===
 
-*SOLUTION*
-
-. Remove the Nexus Staging repository
-. Remove the Release Workspace Docker volume
-. Re-execute the release
-====
+Repositories are configured in the release properties file, see `doc/config/exo-release-sample.properties`.
 
 
 == FAQ
@@ -255,7 +246,7 @@ RUN cp -R ${EXO_CI_TMP_DIR}/app/conf/* ${CONFIG_DIR} \
 +
 [source,shell]
 ----
-$ docker build --build-arg ssh_passphrase='XXX' --build-arg nexus_token='XXXX' --build-arg gpg_passphrase='XXX' --build-arg jira_auth_header='XXXX' --build-arg jboss_password='XXX' -t exoplatform/release:RELMAN-1 .
+$ docker build --build-arg ssh_passphrase='XXX' --build-arg nexus_token='XXXX' --build-arg gpg_passphrase='XXX' --build-arg jira_auth_header='XXXX' -t exoplatform/release:RELMAN-1 .
 ----
 +
 . Use the `RELEASE-155` JIRA to test a release with the `maven-sandbox-project`
