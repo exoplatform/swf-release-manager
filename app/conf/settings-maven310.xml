@@ -82,12 +82,18 @@
       <id>jboss-snapshots-repository</id>
       <username>@@JBOSS_LOGIN@@</username>
       <password>@@JBOSS_PASSWORD@@</password>
+      <repositoryOrigins>
+        <repositoryOrigin>https://repository.jboss.org</repositoryOrigin>
+      </repositoryOrigins>
     </server>
      <!-- To deploy releases to JBoss repository -->
     <server>
       <id>jboss-releases-repository</id>
       <username>@@JBOSS_LOGIN@@</username>
       <password>@@JBOSS_PASSWORD@@</password>
+      <repositoryOrigins>
+        <repositoryOrigin>https://repository.jboss.org</repositoryOrigin>
+      </repositoryOrigins>
     </server>
   </servers>
   <mirrors>
