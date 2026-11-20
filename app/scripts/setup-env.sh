@@ -84,7 +84,11 @@ replaceInFile $HOME/.m2/settings.xml @@TOOLS_DIR@@            $TOOLS_DIR
 replaceInFile $HOME/.m2/settings.xml @@SERVER_DIR@@           $LOCAL_DEPENDENCIES_DIR
 
 # Extra Maven OPTS
-export MAVEN_OPTS="${MAVEN_OPTS:-} ${MAVEN_EXTRA_OPTS:-}"
+# The local repository (~/.m2) and the workspace are on different filesystems
+# (docker volumes), so Maven Resolver 2.x cannot hard-link on install and logs a
+# long "Invalid cross-device link" stack trace before falling back to a copy.
+# Copy directly instead (property ignored by Resolver 1.x / Maven 3.9).
+export MAVEN_OPTS="${MAVEN_OPTS:-} -Daether.installer.hardLink=false ${MAVEN_EXTRA_OPTS:-}"
 
 # Install release.json file only if it doesn't already exist
 if [ -f "$WORKSPACE_DIR/release.json" ]
