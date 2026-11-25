@@ -1,60 +1,30 @@
-#!/bin/bash -eu
-set -o pipefail
+#!/bin/bash
 
-#
-# 1- Execute release:prepare Maven command
-# 2- Store release status in release.json
-#
+# 1- Execute release:prepare (changes are not pushed)
+# Usage: maven_prepare_release <project> <skipTests> <tag> <releaseVersion> <devVersion> <issueId> <description>
 function maven_prepare_release {
-  # log status
-  release_status_write_step $MAVEN_RELEASE_PREPARE $STATUS_IN_PROGESS
+  local project=$1 skip_tests=$2 tag=$3 release_version=$4 dev_version=$5 issue_id=$6 description=$7
+  local skip_arg=""
+  release_status_write_step "$MAVEN_RELEASE_PREPARE" "$STATUS_IN_PROGRESS"
+  [ "$skip_tests" = true ] && skip_arg="-DskipTests"
 
-  # init
-  project=$1
-  isTestsSkipped=$2
-  tag=$3
-  releaseVersion=$4
-  devVersion=$5
-  issueId=$6
-  description=$7
+  mvnCommand "$project" release:prepare -DpushChanges=false "-Darguments=${skip_arg}" "-Dtag=$tag" -DsignTag=true \
+    "-DreleaseVersion=$release_version" "-DdevelopmentVersion=$dev_version" \
+    "-DscmCommentPrefix=[exo-release](${exo_user:-unknown}) $issue_id: $description"
 
-  releaseArgsSkipTests=""
-  if [ $isTestsSkipped = true ]; then
-    releaseArgsSkipTests="-DskipTests"
-  fi
-
-  # Execute maven release prepare command (Don't push change on remote repository)
-  mvnCommand $project release:prepare -DpushChanges=false -Darguments=${releaseArgsSkipTests} -Dtag=$tag -DsignTag=true -DreleaseVersion=$releaseVersion -DdevelopmentVersion=$devVersion -DscmCommentPrefix="[exo-release]($exo_user) $issueId: $description"
-
- # log status
- release_status_write_step $MAVEN_RELEASE_PREPARE $STATUS_DONE
+  release_status_write_step "$MAVEN_RELEASE_PREPARE" "$STATUS_DONE"
 }
 
-
-# Execute release:perform Maven command
-# * Add the ability to skip tests for release-perform
-#
-# 1- Check release args (skipTest or not)
-# 2- Execute maven release perform command with local branch
-# 3- Drop release branch and clean useless commits
+# Execute release:perform on the local checkout, deploying to the local staging directory
+# Usage: maven_perform_release <project> <skipTests> <releaseVersion>
 function maven_perform_release {
-  # init
-  project=$1
-  isTestsSkipped=$2
-  releaseVersion=$3
-  releaseArgs="-DlocalCheckout=true"
-  releaseArgsSkipTests=""
+  local project=$1 skip_tests=$2
+  local skip_arg=""
+  release_status_write_step "$MAVEN_RELEASE_PERFORM" "$STATUS_IN_PROGRESS"
+  [ "$skip_tests" = true ] && skip_arg="-DskipTests"
 
-  # log status
-  release_status_write_step $MAVEN_RELEASE_PERFORM $STATUS_IN_PROGESS
+  mvnCommand "$project" release:perform -DlocalCheckout=true \
+    "-Darguments=${skip_arg} -DaltDeploymentRepository=local::default::file://${LOCAL_STAGING_DIR}"
 
-  if [ $isTestsSkipped = true ]; then
-    releaseArgsSkipTests="-DskipTests"
-  fi
-
-  # Execute maven release perform command
-  mvnCommand $project release:perform $releaseArgs "-Darguments=${releaseArgsSkipTests} -DaltDeploymentRepository=local::default::file://${LOCAL_STAGING_DIR}"
-
-  # log status
-  release_status_write_step $MAVEN_RELEASE_PERFORM $STATUS_DONE
+  release_status_write_step "$MAVEN_RELEASE_PERFORM" "$STATUS_DONE"
 }

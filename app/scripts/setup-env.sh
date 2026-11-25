@@ -1,37 +1,24 @@
-#!/bin/bash -eu
-set -o pipefail
+#!/bin/bash
+# shellcheck disable=SC2154 # credentials and settings come from the environment / $CREDENTIALS_FILE
+set -euo pipefail
 
+# shellcheck source-path=SCRIPTDIR
 SCRIPTS_DIR=${0%/*}
-source ${SCRIPTS_DIR}/common.sh
-source ${SCRIPTS_DIR}/utils/credentials.sh
+source "${SCRIPTS_DIR}/common.sh"
+source "${SCRIPTS_DIR}/utils/credentials.sh"
+source "${SCRIPTS_DIR}/utils/files.sh"
 
 log "==============================================================================="
 log "eXo Platform Release Manager (v ${EXOR_VERSION})"
 log "==============================================================================="
 
-# Copy $1 to $2 after having backed up $2 if it existed
-function installFile {
-  echo "Setup $2"
-  # Backup if exists
-  if [ -e $2 ]; then
-    mv $2 $2.$DATE
-    mv $2.$DATE $BACKUPS_DIR
-    echo "Old $2 is backup at $BACKUPS_DIR"
-  fi
-  mkdir -p ${2%/*}
-  cp $1 $2
-  chmod 700 $2 #Some files contain passwords
-}
-
-
-# Replaces all occurences of $2 by $3 in file $1
-function replaceInFile {
-  sed "s${SEP}$2${SEP}$3${SEP}g" $1 > $1.tmp
-  mv $1.tmp $1
-}
-
 printHeader "Load credentials from $CREDENTIALS_FILE"
-source $CREDENTIALS_FILE
+# shellcheck disable=SC1090
+source "$CREDENTIALS_FILE"
+for _v in "${nexus_token:-}" "${jboss_password:-}" "${gpg_passphrase:-}" "${ssh_passphrase:-}"; do
+  if [ -n "$_v" ]; then log_register_secret "$(decompress "$_v")"; fi
+done
+log_register_secret "${TRIBE_RELEASE_PASSWORD:-}"
 
 printHeader "System Information"
 log ">>> Operating System :"
@@ -39,23 +26,23 @@ uname -a | log
 
 printHeader "Configuration file preparation"
 # BASH Config
-installFile $CONFIG_DIR/bashrc $HOME/.bashrc
+installFile "$CONFIG_DIR/bashrc" "$HOME/.bashrc"
 chmod u+x $HOME/.bashrc
-replaceInFile $HOME/.bashrc @@TOOLS_DIR@@ $TOOLS_DIR
-replaceInFile $HOME/.bashrc @@SCRIPTS_DIR@@ $SCRIPTS_DIR
+replaceInFile "$HOME/.bashrc" @@TOOLS_DIR@@ "$TOOLS_DIR"
+replaceInFile "$HOME/.bashrc" @@SCRIPTS_DIR@@ "$SCRIPTS_DIR"
 
 # Git Config
-installFile $CONFIG_DIR/gitconfig $HOME/.gitconfig
-replaceInFile $HOME/.gitconfig @@GITHUB_LOGIN@@          $github_login
-replaceInFile $HOME/.gitconfig @@GITHUB_FULLNAME@@       $github_fullname
-replaceInFile $HOME/.gitconfig @@GITHUB_EMAIL@@          $github_email
-replaceInFile $HOME/.gitconfig @@GITHUB_SIGNING_KEY@@    $ssh_signing_key_path
-replaceInFile $HOME/.gitconfig @@GPG_FORMAT@@ ssh
-installFile $CONFIG_DIR/initgpg.sh $HOME/initgpg.sh
-replaceInFile $HOME/initgpg.sh @@GPG_KEY_PASSPHRASE@@  $(decompress $gpg_passphrase)
+installFile "$CONFIG_DIR/gitconfig" "$HOME/.gitconfig"
+replaceInFile "$HOME/.gitconfig" @@GITHUB_LOGIN@@ "$github_login"
+replaceInFile "$HOME/.gitconfig" @@GITHUB_FULLNAME@@ "$github_fullname"
+replaceInFile "$HOME/.gitconfig" @@GITHUB_EMAIL@@ "$github_email"
+replaceInFile "$HOME/.gitconfig" @@GITHUB_SIGNING_KEY@@ "$ssh_signing_key_path"
+replaceInFile "$HOME/.gitconfig" @@GPG_FORMAT@@ "ssh"
+installFile "$CONFIG_DIR/initgpg.sh" "$HOME/initgpg.sh"
+replaceInFile "$HOME/initgpg.sh" @@GPG_KEY_PASSPHRASE@@ "$(decompress $gpg_passphrase)"
 chmod +x $HOME/initgpg.sh
 
-installFile $CONFIG_DIR/gitignore $HOME/.gitignore
+installFile "$CONFIG_DIR/gitignore" "$HOME/.gitignore"
 git config --global core.excludesfile $HOME/.gitignore
 
 # MAVEN Config
@@ -72,16 +59,16 @@ if [ -n "$maven_version" ] && [ "$(printf '%s\n' "3.10" "$maven_version" | sort 
 fi
 log "Maven ${maven_version:-unknown} detected, installing ${maven_settings##*/} as \$HOME/.m2/settings.xml"
 installFile $maven_settings $HOME/.m2/settings.xml
-replaceInFile $HOME/.m2/settings.xml @@NEXUS_LOGIN@@          $nexus_login
-replaceInFile $HOME/.m2/settings.xml @@NEXUS_TOKEN@@          $(decompress $nexus_token)
-replaceInFile $HOME/.m2/settings.xml @@EXO_USER@@             $exo_user
-replaceInFile $HOME/.m2/settings.xml @@EXOR_VERSION@@         $EXOR_VERSION
-replaceInFile $HOME/.m2/settings.xml @@JBOSS_LOGIN@@          $jboss_login
-replaceInFile $HOME/.m2/settings.xml @@JBOSS_PASSWORD@@       $(decompress $jboss_password)
-replaceInFile $HOME/.m2/settings.xml @@GPG_KEY_PASSPHRASE@@   $(decompress $gpg_passphrase)
-replaceInFile $HOME/.m2/settings.xml @@GPG_KEY_NAME@@         $gpg_keyname
-replaceInFile $HOME/.m2/settings.xml @@TOOLS_DIR@@            $TOOLS_DIR
-replaceInFile $HOME/.m2/settings.xml @@SERVER_DIR@@           $LOCAL_DEPENDENCIES_DIR
+replaceInFile "$HOME/.m2/settings.xml" @@NEXUS_LOGIN@@ "$nexus_login"
+replaceInFile "$HOME/.m2/settings.xml" @@NEXUS_TOKEN@@ "$(decompress $nexus_token)"
+replaceInFile "$HOME/.m2/settings.xml" @@EXO_USER@@ "$exo_user"
+replaceInFile "$HOME/.m2/settings.xml" @@EXOR_VERSION@@ "$EXOR_VERSION"
+replaceInFile "$HOME/.m2/settings.xml" @@JBOSS_LOGIN@@ "$jboss_login"
+replaceInFile "$HOME/.m2/settings.xml" @@JBOSS_PASSWORD@@ "$(decompress $jboss_password)"
+replaceInFile "$HOME/.m2/settings.xml" @@GPG_KEY_PASSPHRASE@@ "$(decompress $gpg_passphrase)"
+replaceInFile "$HOME/.m2/settings.xml" @@GPG_KEY_NAME@@ "$gpg_keyname"
+replaceInFile "$HOME/.m2/settings.xml" @@TOOLS_DIR@@ "$TOOLS_DIR"
+replaceInFile "$HOME/.m2/settings.xml" @@SERVER_DIR@@ "$LOCAL_DEPENDENCIES_DIR"
 
 # Extra Maven OPTS
 # The local repository (~/.m2) and the workspace are on different filesystems
@@ -100,12 +87,20 @@ else
 fi
 
 printHeader " ==> Github Crendentials (exo-swf)..."
-export SSH_PASS=$(decompress $ssh_passphrase)
+SSH_PASS=$(decompress "$ssh_passphrase")
+export SSH_PASS
 eval "$(ssh-agent)"
 $SCRIPTS_DIR/utils/ssh-add-pass.sh
-ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+mkdir -p ~/.ssh
+ssh-keyscan -H "${GIT_HOST:-github.com}" >>~/.ssh/known_hosts
 $HOME/initgpg.sh
 printFooter " ==> Credentials..."
 
-log "Execute eXo Release command...($@)"
-bash -c "$SCRIPTS_DIR/eXoR.sh $@"
+# The orchestrator passes the whole command as ONE argument ("release-start prj 123 2022"):
+# split it on spaces, without ever evaluating it with a shell
+if [ $# -eq 1 ]; then
+  read -r -a _args <<<"$1"
+  set -- "${_args[@]}"
+fi
+log "Execute eXo Release command...($*)"
+exec "$SCRIPTS_DIR/eXoR.sh" "$@"

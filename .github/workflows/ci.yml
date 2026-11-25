@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Read-only: the jobs only build and test
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Lint (shellcheck)
+        run: tests/lint.sh
+      - name: Unit tests
+        run: tests/unit.sh
+      - name: Integration tests
+        run: tests/integration.sh
+
+  jenkinsfiles:
+    # Syntax check only (the pipelines run on Jenkins, with its plugins)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Parse the Jenkinsfiles
+        run: tests/groovy-syntax.sh

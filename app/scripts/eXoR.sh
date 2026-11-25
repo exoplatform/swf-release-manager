@@ -1,532 +1,297 @@
-#!/bin/bash -eu
-set -o pipefail
+#!/bin/bash
+# shellcheck disable=SC2154 # exception codes and credentials come from common.sh / the environment
+set -euo pipefail
 
+# shellcheck source-path=SCRIPTDIR
 SCRIPTS_DIR=${0%/*}
 
-source ${SCRIPTS_DIR}/common.sh
-source ${SCRIPTS_DIR}/utils/credentials.sh
-source ${SCRIPTS_DIR}/utils/trycatch.sh
-source ${SCRIPTS_DIR}/process/release-catalog.sh
-source ${SCRIPTS_DIR}/process/release-status.sh
-source ${SCRIPTS_DIR}/process/git-clone.sh
-source ${SCRIPTS_DIR}/process/git-release.sh
-source ${SCRIPTS_DIR}/process/nexus-repos.sh
-source ${SCRIPTS_DIR}/process/maven-release.sh
-source ${SCRIPTS_DIR}/process/maven-dependencies.sh
-source ${SCRIPTS_DIR}/notifications/tasks.sh
+# shellcheck source=common.sh
+source "${SCRIPTS_DIR}/common.sh"
+source "${SCRIPTS_DIR}/utils/credentials.sh"
+source "${SCRIPTS_DIR}/utils/files.sh"
+source "${SCRIPTS_DIR}/process/release-catalog.sh"
+source "${SCRIPTS_DIR}/process/release-status.sh"
+source "${SCRIPTS_DIR}/process/git-clone.sh"
+source "${SCRIPTS_DIR}/process/git-release.sh"
+source "${SCRIPTS_DIR}/process/nexus-repos.sh"
+source "${SCRIPTS_DIR}/process/maven-release.sh"
+source "${SCRIPTS_DIR}/process/maven-dependencies.sh"
+source "${SCRIPTS_DIR}/notifications/tasks.sh"
 
-echo "==============================================================================="
-echo "         ***********       eXo Release Manager      ***********                "
-echo "==============================================================================="
+# Steps accepted by "release-continue-from"
+RELEASE_STEPS="nexus:create nexus:deploy nexus:close nexus:drop nexus:release git:tagpush"
 
-# Load credentials for subshell
-source $CREDENTIALS_FILE
+function usage {
+  cat <<'USAGE'
+==== HELP ====
+Usage: eXoR [command] [options]
+ --- Catalog commands ---
+* eXoR list
+* eXoR catalog-from-url <TASK_ID> [CONTINUOUS_RELEASE_SUFFIX]   (<TASK_ID>.json, .yaml or .yml)
+ --- Project commands ---
+* eXoR project-clone <PROJECT> | -a | -l <LABEL>
+* eXoR project-info <PROJECT>
+ --- Release commands ---
+* eXoR release-start PROJECT TASK_ID [CONTINUOUS_RELEASE_SUFFIX]
+* eXoR release-continue-from STEP
+** STEP = nexus:create / nexus:deploy / nexus:close / nexus:drop / nexus:release / git:tagpush
+* eXoR release-validate
+* eXoR release-cancel
+* eXoR release-init-json PROJECT TASK_ID
+ --- Misc ---
+* eXoR log-software-versions
+* eXoR bkg-process SECONDS
+==== HELP ====
+USAGE
+}
 
-# Scripts to register github key file
-eval "$(ssh-agent)"
-$SCRIPTS_DIR/utils/ssh-add-pass.sh
-unset SSH_PASS
+# Mask every credential known by the process in the logs
+function register_secrets {
+  local v
+  for v in "${nexus_token:-}" "${jboss_password:-}" "${gpg_passphrase:-}" "${ssh_passphrase:-}"; do
+    [ -n "$v" ] && log_register_secret "$(decompress "$v")"
+  done
+  log_register_secret "${TRIBE_RELEASE_PASSWORD:-}"
+  local catalog_credentials=${CATALOG_CREDENTIALS:-}
+  log_register_secret "${catalog_credentials#*:}"
+}
 
-#
-# Clone one or severals projects
+# Load the catalog entry of a project in the global variables
+# gitOrganization, releaseVersion, tagName, releaseBranch, releaseNextSnapshotVersion, nexus_host, nexus_profile
+function load_project_info {
+  local project
+  project=$(getProjectByNameFromCatalog "$1")
+  if [ "$project" = "0" ]; then
+    error "Project $1 not found in the catalog!"
+    throw "$exReleasePrerequisiteKO"
+  fi
+  log_debug "Project: $project"
+  # shellcheck disable=SC2034 # some variables are only used by some callers
+  IFS=':' read -r _ gitOrganization releaseVersion releaseBranch releaseNextSnapshotVersion nexus_host nexus_profile <<<"$project"
+  tagName=$releaseVersion
+}
+
+# Handle an exception raised in a guarded block: eXoR_guard <prefix of the status> <exit code>
+function release_failed {
+  local code=$1 status=$2
+  error "The release can't be executed."
+  release_status_update_step_status "$STATUS_ERROR"
+  task_add_comment "$projectName" "${status}_${code}" "$issueId"
+  error "[$code] $(exception_message "$code")"
+  throw "$code"
+}
+
 function clone {
-  case $2 in
-    "-a")
-      git_clone_all
-      exit;
-      ;;
-    "-l")
-      git_clone_all_with_label $3
-      exit;
-      ;;
-    *)
-     git_clone_single $2
-     exit;
-     ;;
+  case ${2:-} in
+    "-a") git_clone_all ;;
+    "-l") git_clone_all_with_label "${3:?label required}" ;;
+    *) git_clone_single "${2:?project required}" ;;
   esac
 }
 
-#
-# Info about a project present into the catalog
-function exor_project_info {
-  getProjectByNameFromCatalog $1
-}
-
-
-
-#
-# Check all parameters
-# * git branch exist
-# * git tag doesn't exist
+# Check that the git tag doesn't exist yet: exor_release_check_prerequisites <project> <organization> <tag>
 function exor_release_check_prerequisites {
   printHeader "Check Prerequisite for Release"
-  tagExist=$(git ls-remote --exit-code --tags git@$GIT_HOST:$2/$1.git $3 | wc -l)
-  log "[DEBUG] Response from github for tag $3: " $tagExist
-
-  if [ $tagExist -eq 1 ]; then
-    error "[ERROR] The Git tag that you want to create already exist."
-    # Tag already exist, we can't do a release
+  local tag_exists
+  tag_exists=$(git ls-remote --tags "git@$GIT_HOST:$2/$1.git" "refs/tags/$3" | wc -l)
+  log_debug "Response from github for tag $3: $tag_exists"
+  if [ "$tag_exists" -ge 1 ]; then
+    error "The Git tag $3 that you want to create already exist."
     return 1
-  else
-    log "[OK] Git Tag not exist."
-    return 0
   fi
+  log_info "Git Tag $3 does not exist."
   printFooter "Check Prerequisite for Release"
 }
 
-
-#
-# Release a Project from Catalog
-# 1. Read project from catalog.json
-# 2. Check release Prerequisite
-# 3. Update release.json status
-# 4. Clone project
-# 5. Update Maven SNAPSHOT dependencies to RELEASE dependencies
-# 6. Maven release:prepare
-# 7. Maven release:perform
-# 5. Update Maven RELEASE dependencies to SNAPSHOTdependencies
-# 6. Nexus: Create Nexus Staging Repo
-#
-# 7. Nexus: Close Staging Repo
-# 8.
+# Release a project from the catalog:
+# check prerequisites, clone, update the SNAPSHOT dependencies, release:prepare, release:perform,
+# create the Nexus staging repository, deploy, close (and release for continuous releases), push the tag.
 function exor_release_project {
-  # Init
-  projectName=$2
-  issueId=$3
-  versionSuffix=${4:-}
-  prepareReleaseSkipTests=false
+  projectName=${2:?project required}
+  issueId=${3:?TASK_ID required}
+  local versionSuffix=${4:-} skip_tests=false
 
-  if [ ! -z "${versionSuffix}" ] && [[ ! "${versionSuffix}" =~ ^[0-9]{8}([0-9][0-9])?$ ]]; then 
+  if [ -n "$versionSuffix" ] && [[ ! "$versionSuffix" =~ ^[0-9]{8}([0-9][0-9])?$ ]]; then
     error "Invalid CONTINUOUS_RELEASE_SUFFIX parameter: ${versionSuffix}! Should be numeric with length 8 or 10 (eg 20221020 or 2022102001) or leave it blank!"
-    throw $exReleasePrerequisiteKO
+    throw "$exReleasePrerequisiteKO"
   fi
-
-  if [[ ! "${issueId}" =~ ^([0-9]+|continuous-release-template(-[a-z]+)?)$ ]]; then 
+  if [[ ! "$issueId" =~ ^([0-9]+|continuous-release-template(-[a-z]+)?)$ ]]; then
     error "Invalid TASK_ID parameter: ${issueId}! Should be numeric or refer to a continuous release catalog!"
-    throw $exReleasePrerequisiteKO
+    throw "$exReleasePrerequisiteKO"
   fi
-  
   # Skip unit tests for based CI/CD builds (eg weekly releases)
-  if [ ! -z "${versionSuffix}" ] && [[ "${versionSuffix}" =~ ^[0-9]{8}([0-9][0-9])?$ ]] && [[ "${issueId}" =~ ^[0-9]+$ ]]; then 
+  if [ -n "$versionSuffix" ] && [[ "$issueId" =~ ^[0-9]+$ ]]; then
     log "Skipping unit tests for this module as this release is already built and based on ${versionSuffix} suffix"
-    prepareReleaseSkipTests=true
+    skip_tests=true
   fi
 
-  log "[DEBUG]" $issueId
+  release_catalog_download_from_url "$issueId" "$versionSuffix"
 
-  log "Download catalog.json for release..."
-  release_catalog_download_from_url $issueId $versionSuffix
-
-  try
+  local rc=0
   (
-      ##############  GET PROJECT INFO #########################
-      project=$(getProjectByNameFromCatalog $projectName)
-      if [ "$project" == "0" ]; then
-         # Project not found, stop the process
-        error "Project not found!"
-        throw $exReleasePrerequisiteKO
-      fi
+    load_project_info "$projectName"
+    exor_release_check_prerequisites "$projectName" "$gitOrganization" "$tagName" || throw "$exReleasePrerequisite"
+    release_status_init "$issueId" "$projectName"
+    git_clone_single "$projectName" || throw "$exReleasePrerequisite"
+    git_release_create_branch "$projectName" "$releaseVersion"
+    maven_dependencies_update_before_release "$projectName" "$issueId"
 
-      log "Project: " $project
-      IFS=':' read -r -a params <<< "$project"
-      # Project params
-      gitOrganization=${params[1]}
-      releaseVersion=${params[2]}
-      tagName=$releaseVersion
-      releaseBranch=${params[3]}
-      releaseNextSnapshotVersion=${params[4]}
-      nexus_host=${params[5]}
-      nexus_profile=${params[6]}
-      ##############  GET PROJECT INFO #########################
+    maven_prepare_release "$projectName" "$skip_tests" "$tagName" "$releaseVersion" "$releaseNextSnapshotVersion" "$issueId" "$projectName" || throw "$exProjectBuild"
+    task_add_comment "$projectName" "release_prepare_OK" "$issueId"
 
-      # Check that all informations are OK for release
-      exor_release_check_prerequisites $projectName $gitOrganization $tagName || throw $exReleasePrerequisite
+    # skip tests for release:perform as release:prepare just ran them
+    maven_perform_release "$projectName" true "$releaseVersion" || throw "$exProjectBuild"
+    task_add_comment "$projectName" "release_perform_OK" "$issueId"
 
-      # Init Release Status (create release.json file)
-      release_status_init $issueId $projectName
+    local description="$issueId:$projectName:$tagName" repo_id
+    nexus_create_staging_repo "$description" "$nexus_host" "$nexus_profile" || throw "$exNexusStaging"
+    task_add_comment "$projectName" "nexus_staging_repo_created_OK" "$issueId"
 
-      # Clone project
-      git_clone_single $projectName || throw $exReleasePrerequisite
+    repo_id=$(release_status_get_repo_id)
+    nexus_deploy_staged_repo "$repo_id" "$nexus_host" "$nexus_profile" || throw "$exNexusStaging"
+    task_add_comment "$projectName" "nexus_deploy_to_stage_repo_OK" "$issueId"
 
-      # Create a release branch locally
-      git_release_create_branch $projectName $releaseVersion
-
-      # Execute Maven release
-      maven_dependencies_update_before_release $projectName $issueId
-
-      maven_prepare_release $projectName $prepareReleaseSkipTests $tagName $releaseVersion $releaseNextSnapshotVersion $issueId $projectName || throw $exProjectBuild
-      # Notification to Tribe Task
-      task_add_comment $projectName "release_prepare_OK" $issueId
-
-      # skip tests for release:perform as release:prepare just run them
-      maven_perform_release $projectName true $releaseVersion || throw $exProjectBuild
-      # Notification to Tribe Task
-      task_add_comment $projectName "release_perform_OK" $issueId
-
-      # Fix: Workaround to allow project release without resolving SNAPSHOT dependencies
-      # during the staging repository's close and release process.
-      #
-      # Note: This step is unnecessary because the workflow doesn't push changes with
-      # the next_snapshot_version to the release branch. It only creates a local
-      # release/$releaseVersion branch without modifying the remote.
-      # If push needed, this should be called after the release process, and complete the missing push part.
-      #
-      # maven_dependencies_update_after_release $projectName $issueId
-
-      # Create Nexus Staging Repositry
-      description="$issueId:$projectName:$tagName"
-      nexus_create_staging_repo $description $nexus_host $nexus_profile || throw $exNexusStaging
-      # Notification to Tribe Task
-      task_add_comment $projectName "nexus_staging_repo_created_OK" $issueId
-
-      # Upload Release artifacts
-      nexus_deploy_staged_repo $(release_status_get_repo_id) $nexus_host $nexus_profile || throw $exNexusStaging
-      # Notification to Tribe Task
-      task_add_comment $projectName "nexus_deploy_to_stage_repo_OK" $issueId
-
-      # Check if the CI/CD is enabled, if yes, close and release staging repository will performed. No need to perform validate action
-      if [ -z "${versionSuffix:-}" ]; then 
-        # Close Nexus Staging Repository
-        nexus_close_staging_repo $projectName $(release_status_get_repo_id) $nexus_host $nexus_profile $description false || throw $exNexusStaging
-        # Notification to Tribe Task
-        task_add_comment $projectName "nexus_staging_repo_closed_OK" $issueId
-      else 
-        # Close and Release Nexus Staging Repository
-        nexus_close_staging_repo $projectName $(release_status_get_repo_id) $nexus_host $nexus_profile $description true || throw $exNexusStaging
-        # Notification to Tribe Task
-        task_add_comment $projectName "nexus_staging_repo_closed_OK" $issueId
-        task_add_comment $projectName "nexus_staging_repo_release_OK" $issueId
-        git_release_clean_and_push $projectName $releaseVersion
-      fi
-  )
-  catch || {
-    # now you can handle
-    error "[ERROR] The release can't be executed."
-
-    # Update status in error
-    release_status_update_step_status $STATUS_ERROR
-
-    # Notification to Tribe Task
-    msg="ERROR_release_start_$ex_code"
-    # Notification to Tribe Task
-    task_add_comment $projectName "$msg" $issueId
-
-    case $ex_code in
-        $exReleasePrerequisiteKO)
-            error "[$ex_code] The Releases Prerequisite are not OK."
-        ;;
-        $exProjectBuildKO)
-            error "[$ex_code] The Maven Project failed to build."
-        ;;
-        *)
-            error "[$ex_code] An unexpected exception was thrown"
-        ;;
-    esac
-    throw $ex_code # you can rethrow the "exception" causing the script to exit if not caught
-  }
+    if [ -z "$versionSuffix" ]; then
+      nexus_close_staging_repo "$projectName" "$repo_id" "$nexus_host" "$nexus_profile" "$description" false || throw "$exNexusStaging"
+      task_add_comment "$projectName" "nexus_staging_repo_closed_OK" "$issueId"
+    else
+      # CI/CD release: close and release the staging repository, no validation step
+      nexus_close_staging_repo "$projectName" "$repo_id" "$nexus_host" "$nexus_profile" "$description" true || throw "$exNexusStaging"
+      task_add_comment "$projectName" "nexus_staging_repo_closed_OK" "$issueId"
+      task_add_comment "$projectName" "nexus_staging_repo_release_OK" "$issueId"
+      git_release_clean_and_push "$projectName" "$releaseVersion"
+    fi
+  ) || rc=$?
+  if [ "$rc" -ne 0 ]; then release_failed "$rc" "ERROR_release_start"; fi
 }
 
 function exor_release_init_json {
-  projectName=$2
-  issueId=$3
   printHeader "Generate release.json file"
-  installFile $CONFIG_DIR/release.json $WORKSPACE_DIR/release.json
-  release_status_init $issueId $projectName
+  installFile "$CONFIG_DIR/release.json" "$WORKSPACE_DIR/release.json"
+  release_status_init "${3:?TASK_ID required}" "${2:?project required}"
   printFooter "Generate release.json file"
 }
 
-#
-# Validate a Release
-# * Push git tag to the remote repository
-# * Release Nexus repository
-# * Add comment to the issue
+# Validate a release: release the Nexus repository then push the git tag
 function exor_validate_release {
   printHeader "Validate Release"
-
-  ##############  GET PROJECT INFO #########################
   projectName=$(release_status_get_project_id)
-  project=$(getProjectByNameFromCatalog $projectName)
-  if [ "$project" == "0" ]; then
-      # Project not found, stop the process
-    error "Project not found!"
-    throw $exReleasePrerequisiteKO
-  fi
-
-  log "Project: " $projectName
-  IFS=':' read -r -a params <<< "$project"
-  # Project params
-  gitOrganization=${params[1]}
-  releaseVersion=${params[2]}
-  tagName=$releaseVersion
-  ##############  GET PROJECT INFO #########################
-
-  # Release Nexus Repository
+  load_project_info "$projectName"
   exor_release_from_step nexus:release
-
-  # Push git tag to remote
-  git_release_clean_and_push $projectName $releaseVersion
+  git_release_clean_and_push "$projectName" "$releaseVersion"
   printFooter "Validate Release"
 }
 
-#
-# Cancel a release:
-# * Remove git project 
-# * Remove Nexus local staging 
-# * Remote Nexus remote staging repository
-#
+# Cancel a release: drop the remote Nexus repository, remove the local data
 function exor_cancel_release {
   printHeader "Cancel Release"
-
-  ##############  GET PROJECT INFO #########################
   projectName=$(release_status_get_project_id)
-  project=$(getProjectByNameFromCatalog $projectName)
-  if [ "$project" == "0" ]; then
-      # Project not found, stop the process
-    error "Project not found!"
-    throw $exReleasePrerequisiteKO
-  fi
-
-  log "Project: " $projectName
-  IFS=':' read -r -a params <<< "$project"
-  # Project params
-  gitOrganization=${params[1]}
-  releaseVersion=${params[2]}
-  tagName=$releaseVersion
-  ##############  GET PROJECT INFO #########################
-
-  # Drop Remote Nexus Repository
+  load_project_info "$projectName"
   exor_release_from_step nexus:drop
-
-  # Remove git project datas
-  rm -rf ${PRJ_DIR}/*
-  # Remove Nexus local staging
-  rm -rf ${LOCAL_STAGING_DIR}/*
-  # Remove release.json
-  rm ${WORKSPACE_DIR}/release.json
-
+  rm -rf "${PRJ_DIR:?}"/* "${LOCAL_STAGING_DIR:?}"/*
+  rm -f "${WORKSPACE_DIR}/release.json"
   printFooter "Cancel Release"
 }
 
-
-#
-# Use it to continue a release after a problem
-#
+# Continue a release after a problem
 function exor_release_from_step {
-
-  ##############  GET PROJECT INFO #########################
   issueId=$(release_status_get_issue_id)
   projectName=$(release_status_get_project_id)
-  project=$(getProjectByNameFromCatalog $projectName)
-  if [ "$project" == "0" ]; then
-     # Project not found, stop the process
-    error "Project not found!"
-    throw $exReleasePrerequisiteKO
-  fi
+  load_project_info "$projectName"
+  local description="$projectName:$tagName" repo_id comment rc=0
+  repo_id=$(release_status_get_repo_id)
 
-  log "Project: " $project
-  IFS=':' read -r -a params <<< "$project"
-  # Project params
-  gitOrganization=${params[1]}
-  releaseVersion=${params[2]}
-  tagName=$releaseVersion
-  releaseBranch=${params[3]}
-  releaseNextSnapshotVersion=${params[4]}
-  nexus_host=${params[5]}
-  nexus_profile=${params[6]}
-  ##############  GET PROJECT INFO #########################
-
-  try
   (
     case $1 in
       "nexus:create")
-        log $projectName
-        description=$projectName":"$tagName
-        nexus_create_staging_repo $description $nexus_host $nexus_profile || throw $exNexusStaging
-        # Notification to Tribe Task
-        task_add_comment $projectName "nexus_staging_repo_created_OK" $issueId
-        exit;
+        nexus_create_staging_repo "$description" "$nexus_host" "$nexus_profile" || throw "$exNexusStaging"
+        comment="nexus_staging_repo_created_OK"
         ;;
       "nexus:deploy")
-        log $projectName
-        nexus_deploy_staged_repo $(release_status_get_repo_id) $nexus_host $nexus_profile || throw $exNexusStaging        
-        # Notification to Tribe Task
-        task_add_comment $projectName "nexus_deploy_to_stage_repo_OK" $issueId
-        exit;
+        nexus_deploy_staged_repo "$repo_id" "$nexus_host" "$nexus_profile" || throw "$exNexusStaging"
+        comment="nexus_deploy_to_stage_repo_OK"
         ;;
       "nexus:close")
-       description=$projectName":"$tagName
-        nexus_close_staging_repo $projectName $(release_status_get_repo_id) $nexus_host $nexus_profile $description || throw $exNexusStaging
-        # Notification to Tribe Task
-        task_add_comment $projectName "nexus_staging_repo_closed_OK" $issueId
-        exit;
+        nexus_close_staging_repo "$projectName" "$repo_id" "$nexus_host" "$nexus_profile" "$description" false || throw "$exNexusStaging"
+        comment="nexus_staging_repo_closed_OK"
         ;;
       "nexus:drop")
-        description=$projectName":"$tagName
-        nexus_drop_staging_repo $(release_status_get_repo_id) $nexus_host $nexus_profile $description  || throw $exNexusStaging
-        # Notification to Tribe Task
-        task_add_comment $projectName "nexus_staging_repo_drop_OK" $issueId
-        exit;
+        nexus_drop_staging_repo "$repo_id" "$nexus_host" "$nexus_profile" "$description" || throw "$exNexusStaging"
+        comment="nexus_staging_repo_drop_OK"
         ;;
       "nexus:release")
-        description=$projectName":"$tagName
-        nexus_release_staging_repo $(release_status_get_repo_id) $nexus_host $nexus_profile $description  || throw $exNexusStaging
-        # Notification to Tribe Task
-        task_add_comment $projectName "nexus_staging_repo_release_OK" $issueId
-        exit;
+        nexus_release_staging_repo "$repo_id" "$nexus_host" "$nexus_profile" "$description" || throw "$exNexusStaging"
+        comment="nexus_staging_repo_release_OK"
         ;;
       "git:tagpush")
-        git_push_release_tag $projectName $tagName
-        exit;
+        git_push_release_tag "$projectName" "$tagName"
+        comment=""
         ;;
-      *)
-         throw $exNexusStaging
-         exit;
-         ;;
+      *) throw "$exNexusStaging" ;;
     esac
-  )
-  catch || {
-      # now you can handle
-      error "[ERROR] Unable to continue the release."
-      # Notification to Tribe Task
-      msg="ERROR_release_continue_from_$ex_code"
-      # Update status in error
-      release_status_update_step_status $STATUS_ERROR
-      # Notification to Tribe Task
-      task_add_comment $projectName "$msg" $issueId
-
-      case $ex_code in
-          $exReleasePrerequisiteKO)
-              error "[$ex_code] The Releases Prerequisite are not OK."
-          ;;
-          $exProjectBuildKO)
-              error "[$ex_code] The Maven Project failed to build."
-          ;;
-          *)
-              error "[$ex_code] An unexpected exception was thrown"
-          ;;
-      esac
-      throw $ex_code # you can rethrow the "exception" causing the script to exit if not caught
-  }
+    if [ -n "$comment" ]; then task_add_comment "$projectName" "$comment" "$issueId"; fi
+  ) || rc=$?
+  if [ "$rc" -ne 0 ]; then release_failed "$rc" "ERROR_release_continue_from"; fi
 }
 
 function checkSoftwareVersions {
-
-  log "***** eXo Platform Release Manager (v ${EXOR_VERSION}) !!! *******"
+  log "***** eXo Platform Release Manager (v ${EXOR_VERSION:-unknown}) !!! *******"
   printHeader "Check software for release"
-  log "-----"
-  log "JAVA VERSION "
-  log "-----"
-  java -version 2>&1 | tee -a ${LOGS_DIR}/infos.log
-  log "JAVA_HOME = $JAVA_HOME"
-  log "-----"
-  log "GIT VERSION"
-  log "-----"
-  git --version 2>&1 | tee -a ${LOGS_DIR}/infos.log
-  log "-----"
-  log "MAVEN VERSION"
-  log "-----"
-  mvn --version 2>&1 | tee -a ${LOGS_DIR}/infos.log
-  log "-----"
-  log "JQ VERSION"
-  log "-----"
-  jq --version 2>&1 | tee -a ${LOGS_DIR}/infos.log
-  log "-----"
+  java -version 2>&1 | log_stream
+  log "JAVA_HOME = ${JAVA_HOME:-unset}"
+  git --version 2>&1 | log_stream
+  mvn --version 2>&1 | log_stream
+  jq --version 2>&1 | log_stream
   printFooter "Check software for release"
-
-}
-
-function usage {
-  echo "==== HELP ===="
-  echo "Usage: eXoR [command] [options]"
-  echo " --- Catalog commands --- "
-  echo "* eXoR list"
-  echo "* eXoR catalog-from-url <TASK_ID>"
-  echo "* eXoR info PROJECT"
-  echo " "
-  echo " --- Project commands --- "
-  echo "* eXoR project-clone <PROJECT>"
-  echo "* eXoR project-info <PROJECT>"
-  echo " "
-  echo " --- Release commands --- "
-  echo "* eXoR release-start PROJECT TASK_ID CONTINUOUS_RELEASE_SUFFIX"
-  echo "* eXoR release-continue-from STEP "
-  echo "** STEP = nexus:create / nexus:deploy / nexus:close / nexus:drop / nexus:release / git:tagpush"
-  echo "* eXoR release-validate TASK_ID"
-  echo "* eXoR release-cancel TASK_ID"
-  echo "* eXoR release-init-json PROJECT TASK_ID"
-  echo "==== HELP ===="
 }
 
 # Infinite loop to be able to let the container started
 function letContainerStarted {
   log "==== CONTAINER IS RUNNING... ===="
   while :; do
-    sleep ${1}
+    sleep "${1:?seconds required}"
   done
-  log "==== CONTAINER STOPPED ===="
 }
 
+function main {
+  local command=${1:-}
+  case $command in
+    "" | help | -h | --help) usage; return 0 ;;
+    list) displayAvailableProjects; return 0 ;;
+    log-software-versions) checkSoftwareVersions; return 0 ;;
+  esac
 
-case $1 in
-  "bkg-process")
-    letContainerStarted "$2"
-    exit;
-    ;;
-  "project-clone")
-    clone "$@"
-    exit;
-    ;;
-  "project-info")
-    exor_project_info $2
-    exit;
-    ;;
-  "release-info")
-    echo "TODO "
-    exit;
-    ;;
-  "release-start")
-    exor_release_project $@
-    exit;
-    ;;
-  "release-init-json")
-    exor_release_init_json $@
-    exit;
-    ;;
-  "release-continue-from")
-    if [ $2 == "nexus:create" ] || [ $2 == "nexus:deploy" ] || [ $2 == "nexus:close" ] || [ $2 == "nexus:drop" ] || [ $2 == "nexus:release" ] || [ $2 == "git:tagpush" ] ; then
-      exor_release_from_step $2
-    else
-      error "[ERROR] Unknown step command."
-    fi
-    exit;
-    ;;
-  "release-validate")
-    exor_validate_release $@
-    exit;
-    ;;
-  "release-cancel")
-    exor_cancel_release $@
-    exit;
-    ;;
-  "list")
-    displayAvailableProjects
-    exit;
-    ;;
-  "maven-update-dependencies-before-release")
-    maven_dependencies_update_before_release $2
-    exit;
-    ;;
-  "catalog-from-url")
-    release_catalog_download_from_url $2 ${3:-}
-    displayAvailableProjects
-    exit;
-    ;;
-  "log-software-versions")
-    checkSoftwareVersions
-    exit;
-    ;;
-  *)
-     usage
-     exit;
-     ;;
-esac
+  # Everything else needs the credentials and the git/ssh access
+  log "eXo Release Manager (v ${EXOR_VERSION:-unknown}): $command"
+  # shellcheck disable=SC1090
+  source "$CREDENTIALS_FILE"
+  register_secrets
+  eval "$(ssh-agent)" >/dev/null
+  SSH_PASS=$(decompress "$ssh_passphrase") "$SCRIPTS_DIR/utils/ssh-add-pass.sh"
+
+  case $command in
+    bkg-process) letContainerStarted "${2:-}" ;;
+    project-clone) clone "$@" ;;
+    project-info) getProjectByNameFromCatalog "${2:?project required}" ;;
+    release-start) exor_release_project "$@" ;;
+    release-init-json) exor_release_init_json "$@" ;;
+    release-continue-from)
+      if [[ " $RELEASE_STEPS " == *" ${2:-} "* ]]; then
+        exor_release_from_step "$2"
+      else
+        error "Unknown step command '${2:-}'. Steps: $RELEASE_STEPS"
+        return 1
+      fi
+      ;;
+    release-validate) exor_validate_release ;;
+    release-cancel) exor_cancel_release ;;
+    maven-update-dependencies-before-release) maven_dependencies_update_before_release "${2:?project required}" "${3:-}" ;;
+    catalog-from-url)
+      release_catalog_download_from_url "${2:?TASK_ID required}" "${3:-}"
+      displayAvailableProjects
+      ;;
+    *) usage; return 1 ;;
+  esac
+}
+
+main "$@"

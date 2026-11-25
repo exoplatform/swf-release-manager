@@ -10,13 +10,40 @@ def createBasicAuthString(credentials) {
     [Authorization: "Basic " + authString]
 }
 
+// Read an URL as text, null when it does not exist (HTTP 404)
+@NonCPS
+def fetchText(String url, Map requestParameters) {
+    try {
+        return new URL(url).newReader(requestProperties: requestParameters).text
+    } catch (FileNotFoundException e) {
+        return null
+    }
+}
+
+// Download the catalog of a task: <TASK_ID>.json, or <TASK_ID>.yaml / <TASK_ID>.yml (needs the pipeline-utility-steps plugin)
+def downloadCatalog(String baseUrl, String taskId, Map requestParameters) {
+    for (ext in ['json', 'yaml', 'yml']) {
+        def url = "${baseUrl}/${taskId}.${ext}"
+        echo "Downloading catalog at ${url}"
+        def text = fetchText(url, requestParameters)
+        if (text != null) {
+            return ext == 'json' ? jsonParser(text) : readYaml(text: text)
+        }
+    }
+    error "Catalog ${baseUrl}/${taskId}.(json|yaml|yml) not found"
+}
+
+def dockerCmd() {
+    return env.DOCKER_CMD ?: 'sudo docker'
+}
+
 def doCleanM2Cache(taskID) {
    def m2cacheVolumeName = "${taskID}-m2_cache"
    stage ("[Cleanup] Remove Maven Cache for Task ID: ${taskID}") {
-       def createdAt = sh(returnStdout: true, script: "sudo docker volume inspect -f '{{ .CreatedAt }}' ${m2cacheVolumeName} 2>/dev/null || :").trim()
+       def createdAt = sh(returnStdout: true, script: "${dockerCmd()} volume inspect -f '{{ .CreatedAt }}' ${m2cacheVolumeName} 2>/dev/null || :").trim()
        if (!!createdAt) {
             echo "Dropping Maven cache volume ${m2cacheVolumeName}. Creation date: ${createdAt}."
-            sh "sudo docker volume rm ${m2cacheVolumeName}"
+            sh "${dockerCmd()} volume rm ${m2cacheVolumeName}"
        } else {
             echo "Warning: Maven cache volume ${m2cacheVolumeName} does not exist!"
        }
@@ -42,10 +69,10 @@ def doClean(taskID, projectname, action, isInParallel) {
    }
 
    stage ("[Cleanup] ${action.capitalize()} for Project: ${projectname} (Task ID: ${taskID})") {
-       def createdAt = sh(returnStdout: true, script: "sudo docker ${docker_inspect_command} ${entity_name} 2>/dev/null || :").trim()
+       def createdAt = sh(returnStdout: true, script: "${dockerCmd()} ${docker_inspect_command} ${entity_name} 2>/dev/null || :").trim()
        if (!!createdAt) {
             echo "Dropping ${entity_name}. Creation date: ${createdAt}."
-            sh "sudo docker ${docker_command} ${entity_name}"
+            sh "${dockerCmd()} ${docker_command} ${entity_name}"
        } else {
             echo "Warning: ${entity_name} does not exist!"
        }
@@ -53,8 +80,6 @@ def doClean(taskID, projectname, action, isInParallel) {
 }
 
 def doCleans(taskID, projectsToClean, action, cleanM2Cache, isInParallel, catalogCredentialsId) {
-    def catalogURL = "${CATALOG_BASE_URL}/${TASK_ID}.json"
-
     if (cleanM2Cache) {
         doCleanM2Cache(taskID)
     }
@@ -67,10 +92,9 @@ def doCleans(taskID, projectsToClean, action, cleanM2Cache, isInParallel, catalo
         }
         withCatalogCredentials = true
     }
-    echo "Downloading catalog from ${catalogURL} (Using Credentials: ${withCatalogCredentials})"
+    echo "Downloading catalog (Using Credentials: ${withCatalogCredentials})"
 
-    def JSONCatalog = new URL(catalogURL)
-    def catalog = jsonParser(JSONCatalog.newReader(requestProperties: catalogRequestParameters))    
+    def catalog = downloadCatalog(CATALOG_BASE_URL, TASK_ID, catalogRequestParameters)
     echo "Projects in Catalog: " + catalog.size()
     def catalogNames = catalog.collect { it.name }
 
