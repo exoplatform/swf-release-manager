@@ -10,6 +10,44 @@ def createBasicAuthString(credentials) {
     [Authorization: "Basic " + authString]
 }
 
+// Read an URL as text, null when it does not exist (HTTP 404)
+@NonCPS
+def fetchText(String url, Map requestParameters) {
+    try {
+        return new URL(url).newReader(requestProperties: requestParameters).text
+    } catch (FileNotFoundException e) {
+        return null
+    }
+}
+
+// Download the catalog of a task: <TASK_ID>.json, or <TASK_ID>.yaml / <TASK_ID>.yml (needs the pipeline-utility-steps plugin)
+def downloadCatalog(String baseUrl, String taskId, Map requestParameters) {
+    for (ext in ['json', 'yaml', 'yml']) {
+        def url = "${baseUrl}/${taskId}.${ext}"
+        echo "Downloading catalog at ${url}"
+        def text = fetchText(url, requestParameters)
+        if (text != null) {
+            return ext == 'json' ? jsonParser(text) : readYaml(text: text)
+        }
+    }
+    error "Catalog ${baseUrl}/${taskId}.(json|yaml|yml) not found"
+}
+
+// Commands accepted by the release container: RELEASE_CMD -> eXoR command
+def releaseCommand(String releaseCMD, project, taskID, continuousReleaseSuffix) {
+    def continueSteps = ['nexus:create', 'nexus:deploy', 'nexus:close', 'nexus:drop', 'nexus:release', 'git:tagpush']
+    switch (releaseCMD) {
+        case 'start':            return "release-start ${project.name} ${taskID} ${continuousReleaseSuffix}"
+        case 'validate':         return "release-validate"
+        case 'cancel':           return "release-cancel"
+        case 'catalog-from-url': return "catalog-from-url ${taskID} ${continuousReleaseSuffix}"
+    }
+    if (releaseCMD.startsWith('release-continue-from ') && continueSteps.contains(releaseCMD.split(' ')[1])) {
+        return releaseCMD
+    }
+    return null
+}
+
 def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInParallel, config, continuousReleaseSuffix) {
 
    def volume_name = "${taskID}-${project.name}-workspace"
@@ -20,26 +58,13 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
    def BUILD_TIMEOUT = config.BUILD_TIMEOUT
 
    // Create the right command to run in the container
-   if (releaseCMD == "start"){
-        echo "Create volume ${volume_name}"
-        sh "${config.DOCKER_CMD} volume create --name=${volume_name}"
-        container_command = "release-start ${project.name} ${taskID} ${continuousReleaseSuffix}"
-   } else if (releaseCMD == "validate"){
-       container_command = "release-validate ${taskID}"
-   } else if (releaseCMD == "cancel"){
-       container_command = "release-cancel ${project.name} ${taskID}" 
-   } else if (releaseCMD == "catalog-from-url"){
-       container_command = "catalog-from-url ${taskID} ${continuousReleaseSuffix}"
-   } else if (releaseCMD == "release-continue-from nexus:create"){
-       container_command = "release-continue-from nexus:create"
-   } else if (releaseCMD == "release-continue-from nexus:deploy"){
-       container_command = "release-continue-from nexus:deploy"
-   } else if (releaseCMD == "release-continue-from nexus:close"){
-       container_command = "release-continue-from nexus:close"
-   } else if (releaseCMD == "release-continue-from git:tagpush"){
-       container_command = "release-continue-from git:tagpush"
-   } else {
-       echo "Nothing to do."
+   def container_command = releaseCommand(releaseCMD, project, taskID, continuousReleaseSuffix)
+   if (container_command == null) {
+       error "Unknown RELEASE_CMD '${releaseCMD}'"
+   }
+   if (releaseCMD == "start") {
+       echo "Create volume ${volume_name}"
+       sh "${config.DOCKER_CMD} volume create --name=${volume_name}"
    }
 
    if (isInParallel == "true"){
@@ -70,7 +95,7 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
             throw error
         } finally {
             // Delete container if still running
-            sh "docker rm -f ${container_name} 2>/dev/null || true"
+            sh "${config.DOCKER_CMD} rm -f ${container_name} 2>/dev/null || true"
         }
     }
 
@@ -87,25 +112,20 @@ def doRelease(exoUser, jenkinsAgentRootPath, taskID, project, releaseCMD, isInPa
 // Read data from JSON Catalog and executes an action on the specified projects
 def executeActionOnProjects(projects, config, action) {
 
-    def catalogURL = "${CATALOG_BASE_URL}/${TASK_ID}.json"
-    echo "Downloading catalog at ${catalogURL}"
-
     def catalogRequestParameters = [:]
     if (config.CATALOG_CREDENTIALS) {
         catalogRequestParameters += createBasicAuthString(config.CATALOG_CREDENTIALS)
     }
 
-    def JSONCatalog = new URL(catalogURL)
-    def catalog = jsonParser(JSONCatalog.newReader(requestProperties: catalogRequestParameters))    
+    def catalog = downloadCatalog(CATALOG_BASE_URL, TASK_ID, catalogRequestParameters)
     echo "Number of Projects in Catalog: " + catalog.size()
 
     
     // Loop first on projectsToRelease to keep the order
-    for (i = 0; i < projects.length; i++) {
-        def projectName = projects[i];
-        for (j = 0; j < catalog.size(); j++) {
-            if (catalog[j].name == projectName) {
-                action(catalog[j])
+    for (projectName in projects) {
+        for (entry in catalog) {
+            if (entry.name == projectName) {
+                action(entry)
             }
         }
     }
@@ -123,8 +143,8 @@ def validateProjectsToRelease(projects, config) {
   executeActionOnProjects(projects, config, releasedProjectCounter)
   
   // check if  all the projects were found on the json
-  def unreleasedProjects = projects - releasedProjects.keySet()
-  if(unreleasedProjects.length > 0) {
+  def unreleasedProjects = projects.toList() - releasedProjects.keySet().toList()
+  if(unreleasedProjects.size() > 0) {
     echo "ERROR The project(s) ${unreleasedProjects} were not found in the catalog file."
     valid = false
   }
@@ -132,7 +152,7 @@ def validateProjectsToRelease(projects, config) {
   def duplicates = releasedProjects.findAll({ it.value > 1 }).keySet()
   if(duplicates) {
     echo "ERROR The project(s) ${duplicates} are released several times or are present several times on the json file."
-    valide = false
+    valid = false
   }
   valid
 }
@@ -184,12 +204,13 @@ node(selectReleaseNode()) {
         // Init file
         sh "echo > ${config.ENV_FILE_FROM_JENKINS}"
         sh "chmod 600 ${config.ENV_FILE_FROM_JENKINS}"
+        env.ENV_FILE = config.ENV_FILE_FROM_JENKINS
 
         if (catalogCredentialsId) {
             withCredentials([usernamePassword(credentialsId: catalogCredentialsId, usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
                 config.CATALOG_CREDENTIALS = "${USER}:${PASSWORD}"
-
-                sh "echo CATALOG_CREDENTIALS=${config.CATALOG_CREDENTIALS} >> ${config.ENV_FILE_FROM_JENKINS}"
+                // Single quotes: the secret is expanded by the shell, never interpolated by Groovy (it would leak in the logs)
+                sh 'echo "CATALOG_CREDENTIALS=${USER}:${PASSWORD}" >> "$ENV_FILE"'
             }
         }
     }

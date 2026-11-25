@@ -1,0 +1,16 @@
+#!/bin/bash
+# Fake maven: records the calls; release:prepare creates the (local) tag like the real plugin.
+echo "$(pwd) :: $*" >>"$FAKE_LOG/mvn.log"
+for a in "$@"; do
+  case $a in
+    -Dtag=*) tag=${a#-Dtag=} ;;
+  esac
+  if [ -n "${FAKE_MVN_FAIL:-}" ] && [ "$a" = "$FAKE_MVN_FAIL" ]; then
+    echo "[ERROR] simulated failure of $a (password=${FAKE_SECRET:-})"
+    exit 1
+  fi
+done
+if [[ " $* " == *" release:prepare "* ]]; then
+  git tag "$tag"
+fi
+echo "[INFO] fake mvn ok"

@@ -64,10 +64,31 @@ Chat Application
 Use an existing one https://jira.exoplatform.org/browse/SWF-3688 and clone it.
 
 
-==== Create the JSON Catalog
+==== Create the JSON (or YAML) Catalog
 
-Based on the *JIRA description about project to release* and the eXo Components diagram, create the JSON Catalog
-for the release:
+The catalog is a file named `<TASK_ID>.json`, `<TASK_ID>.yaml` or `<TASK_ID>.yml` (looked for in this order).
+The YAML format has exactly the same keys as the JSON one, eg:
+
+[source,yaml]
+----
+- name: wiki
+  git_organization: exoplatform
+  labels: plf
+  maven_property_version: org.exoplatform.wiki.version
+  release:
+    branch: develop
+    version: "4.4.0-M06"
+    current_snapshot_version: 4.4.x-SNAPSHOT
+    next_snapshot_version: 4.4.x-SNAPSHOT
+    nexus_host: exoplatform
+    nexus_staging_profile: public
+----
+
+[NOTE]
+Quote the versions in YAML (`"4.4.0"`, `"1.10"`): unquoted, `1.10` is read as the number `1.1`.
+
+Based on the *JIRA description about project to release* and the eXo Components diagram, create the catalog
+for the release (JSON example):
 
 [source,json]
 .JSON Catalog example
@@ -258,6 +279,7 @@ RUN cp -R ${EXO_CI_TMP_DIR}/app/conf/* ${CONFIG_DIR} \
 $ docker build --build-arg ssh_passphrase='XXX' --build-arg nexus_token='XXXX' --build-arg gpg_passphrase='XXX' --build-arg jira_auth_header='XXXX' --build-arg jboss_password='XXX' -t exoplatform/release:RELMAN-1 .
 ----
 +
+. To test the scripts without building an image, use `tests/integration.sh` (local git remote, fake Nexus/Tribe/catalog servers, fake maven)
 . Use the `RELEASE-155` JIRA to test a release with the `maven-sandbox-project`
 +
 [source,shell]

@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "SSH_AUTH_SOCK=/tmp/fake-agent.sock; export SSH_AUTH_SOCK;"
+echo "SSH_AGENT_PID=1; export SSH_AGENT_PID;"

@@ -1,6 +1,4 @@
-#!/bin/bash -eu
-
-set -o pipefail
+#!/bin/bash
 
 ##
 # All actions related to the communication with Tasks
@@ -78,7 +76,13 @@ function task_add_comment {
     log "Add comment $status for $project_name to task $task_id";
     # Percent-encode the body (spaces as %20): form encoding leaves "+" in the comment
     body=$(printf '%s' "$card" | jq -sRr @uri | tr -d '\n')
-    # Run posting comment in subshell asynchronously
-    (curl -sSL -o /dev/null -u $TRIBE_RELEASE_USER:$TRIBE_RELEASE_PASSWORD -XPOST -H "Content-Type: application/x-www-form-urlencoded" --data-binary "$body" "$TRIBE_RELEASE_TASK_REST_PREFIXE_URL/$task_id" 2>/dev/null &)
+    # Post the comment in a background subshell: a Tribe outage must not fail the release
+    (
+      if ! curl_auth_config "$TRIBE_RELEASE_USER" "$TRIBE_RELEASE_PASSWORD" |
+        curl -fsSL -o /dev/null -K - -XPOST -H "Content-Type: application/x-www-form-urlencoded" \
+          -H "User-Agent: $(getUserAgent)" --data-binary "$body" "$TRIBE_RELEASE_TASK_REST_PREFIXE_URL/$task_id" 2>/dev/null; then
+        log_warn "Unable to add the comment $status to task $task_id"
+      fi
+    ) &
   fi
 }
